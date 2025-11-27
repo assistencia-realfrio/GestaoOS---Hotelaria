@@ -1,26 +1,22 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Função segura para aceder a variáveis de ambiente sem crachar o browser
-const getEnv = (key: string) => {
-  try {
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env) {
-      // @ts-ignore
-      return process.env[key];
-    }
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      // @ts-ignore
-      return import.meta.env[key] || import.meta.env[`VITE_${key}`];
-    }
-  } catch (e) {
-    console.warn('Erro ao ler variável de ambiente', key);
-  }
-  return '';
-};
+// No Vite, as variáveis de ambiente são acedidas via import.meta.env
+// Certifique-se que tem um ficheiro .env na raiz do projeto com:
+// VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+// VITE_SUPABASE_ANON_KEY=sua-chave
 
-// Configuração padrão para evitar crash se as vars não existirem
-const supabaseUrl = getEnv('SUPABASE_URL') || 'https://xyzcompany.supabase.co';
-const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY') || 'public-anon-key';
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn(
+    'AVISO: Variáveis de ambiente do Supabase não encontradas. A aplicação pode não funcionar corretamente no modo online.'
+  );
+}
+
+// Criação do cliente. Se as variáveis estiverem vazias, criará um cliente inválido mas não quebrará a app imediatamente,
+// permitindo que o ecrã de login apareça e o utilizador possa escolher "Modo Demo".
+export const supabase = createClient(
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-key'
+);

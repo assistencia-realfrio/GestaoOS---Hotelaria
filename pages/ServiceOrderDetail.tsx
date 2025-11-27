@@ -530,6 +530,32 @@ const ServiceOrderDetail: React.FC = () => {
     setActionLoading(false);
   };
 
+  const handleSaveProgress = async () => {
+    setActionLoading(true);
+    const updates = {
+      resolution_notes: notes,
+      internal_notes: internalNotes,
+      scheduled_date: os.scheduled_date
+    };
+
+    setOs({ ...os, ...updates });
+
+    if (!isDemo) {
+      try {
+        const { error } = await supabase.from('service_orders').update(updates).eq('id', os.id);
+        if (error) throw error;
+        alert("Alterações guardadas.");
+      } catch (err) {
+        console.error("Error saving:", err);
+        alert("Erro ao guardar alterações.");
+      }
+    } else {
+      await new Promise(r => setTimeout(r, 500));
+      alert("Alterações guardadas (Demo).");
+    }
+    setActionLoading(false);
+  };
+
   const handleStartOS = () => handleUpdateStatus(OSStatus.EM_EXECUCAO);
   const handlePauseOS = () => handleUpdateStatus(OSStatus.PAUSA);
   
@@ -1167,6 +1193,19 @@ const ServiceOrderDetail: React.FC = () => {
                   disabled={isReadOnly}
                 />
             </div>
+            
+            {!isReadOnly && (
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSaveProgress}
+                  disabled={actionLoading}
+                  className="text-gray-600 hover:text-gray-900 text-sm font-medium flex items-center px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  <Save size={16} className="mr-2" />
+                  Guardar Rascunho
+                </button>
+              </div>
+            )}
 
             <div className="bg-white p-6 rounded-xl shadow-sm border">
               <h3 className="font-semibold text-gray-900 mb-4">Assinatura do Cliente</h3>
