@@ -1,3 +1,4 @@
+
 export enum UserRole {
   ADMIN = 'admin',
   BACKOFFICE = 'backoffice',
@@ -67,6 +68,16 @@ export interface OSPhoto {
   created_at: string;
 }
 
+export interface TimeEntry {
+  id: string;
+  os_id: string;
+  start_time: string;
+  end_time?: string | null;
+  duration_minutes?: number;
+  description?: string;
+  technician_id?: string;
+}
+
 export interface ServiceOrder {
   id: string;
   code: string;
@@ -82,6 +93,7 @@ export interface ServiceOrder {
   start_time?: string;
   end_time?: string;
   resolution_notes?: string;
+  internal_notes?: string; // New field for internal technician notes
   client_signature?: string; // Base64 or URL
   client?: Client;
   equipment?: Equipment;

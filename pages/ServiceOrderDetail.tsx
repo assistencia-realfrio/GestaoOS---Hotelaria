@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Play, Pause, CheckSquare, Camera, PenTool, Save, Wand2, Plus, Trash2, X, Package, FileCheck, RotateCcw, DollarSign, Clock, Calendar } from 'lucide-react';
+import { Play, Pause, CheckSquare, Camera, PenTool, Save, Wand2, Plus, Trash2, X, Package, FileCheck, RotateCcw, DollarSign, Clock, Calendar, Timer, History, Lock, FileText, Download, AlertTriangle, ArrowLeft } from 'lucide-react';
 import SignatureCanvas from '../components/SignatureCanvas';
-import { OSStatus, ServiceOrder, PartUsed, PartCatalogItem, OSPhoto } from '../types';
+import { OSStatus, ServiceOrder, PartUsed, PartCatalogItem, OSPhoto, TimeEntry } from '../types';
 import { generateOSReportSummary } from '../services/geminiService';
 import { supabase } from '../supabaseClient';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 // Mock Catalog Data (Keep as constant for simplicity in both modes)
 const MOCK_CATALOG: PartCatalogItem[] = [
@@ -18,20 +21,29 @@ const MOCK_CATALOG: PartCatalogItem[] = [
 const ServiceOrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'info' | 'pecas' | 'fotos' | 'finalizar'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'pecas' | 'fotos' | 'tempo' | 'finalizar'>('info');
   const [isDemo, setIsDemo] = useState(false);
   
   // Data State
   const [os, setOs] = useState<ServiceOrder | null>(null);
   const [partsUsed, setPartsUsed] = useState<PartUsed[]>([]);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
   
   // Form State
   const [notes, setNotes] = useState('');
+  const [internalNotes, setInternalNotes] = useState('');
   const [generatedSummary, setGeneratedSummary] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [signature, setSignature] = useState<string | null>(null);
   
+  // Time Tracking State
+  const [manualStart, setManualStart] = useState('');
+  const [manualEnd, setManualEnd] = useState('');
+  const [activeTimerEntry, setActiveTimerEntry] = useState<TimeEntry | null>(null);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const timerIntervalRef = useRef<number | null>(null);
+
   // UI State
   const [loading, setLoading] = useState(true);
   const [showPartModal, setShowPartModal] = useState(false);
@@ -42,6 +54,27 @@ const ServiceOrderDetail: React.FC = () => {
     setIsDemo(checkDemo);
     fetchOSDetails(checkDemo);
   }, [id]);
+
+  // Timer Effect
+  useEffect(() => {
+    if (activeTimerEntry && !activeTimerEntry.end_time) {
+      const startTime = new Date(activeTimerEntry.start_time).getTime();
+      
+      timerIntervalRef.current = window.setInterval(() => {
+        const now = new Date().getTime();
+        setElapsedSeconds(Math.floor((now - startTime) / 1000));
+      }, 1000);
+    } else {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      setElapsedSeconds(0);
+    }
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    };
+  }, [activeTimerEntry]);
 
   const fetchOSDetails = async (demoMode: boolean) => {
     setLoading(true);
@@ -58,6 +91,7 @@ const ServiceOrderDetail: React.FC = () => {
         status: OSStatus.ATRIBUIDA,
         priority: 'alta',
         created_at: new Date(Date.now() - 86400000).toISOString(),
+        scheduled_date: new Date().toISOString().split('T')[0],
         client: {
           id: 'cli-1',
           name: 'Hotel Baía Azul',
@@ -77,6 +111,10 @@ const ServiceOrderDetail: React.FC = () => {
           status: 'ativo'
         }
       });
+      // Mock Time Entries
+      setTimeEntries([
+        { id: 't1', os_id: id || '1', start_time: new Date(Date.now() - 7200000).toISOString(), end_time: new Date(Date.now() - 3600000).toISOString(), duration_minutes: 60, description: 'Diagnóstico inicial' }
+      ]);
       setLoading(false);
       return;
     }
@@ -92,27 +130,29 @@ const ServiceOrderDetail: React.FC = () => {
       if (osError) throw osError;
       setOs(osData);
       if (osData.resolution_notes) setNotes(osData.resolution_notes);
+      if (osData.internal_notes) setInternalNotes(osData.internal_notes);
       if (osData.client_signature) setSignature(osData.client_signature);
       
-      // 2. Fetch Parts (Assumes table 'service_order_parts')
-      const { data: partsData } = await supabase
-        .from('service_order_parts')
-        .select('*')
-        .eq('os_id', id);
-      
+      // 2. Fetch Parts
+      const { data: partsData } = await supabase.from('service_order_parts').select('*').eq('os_id', id);
       if (partsData) setPartsUsed(partsData);
 
-      // 3. Fetch Photos (Assumes table 'service_order_photos')
-      const { data: photosData } = await supabase
-        .from('service_order_photos')
-        .select('*')
-        .eq('os_id', id);
-        
+      // 3. Fetch Photos
+      const { data: photosData } = await supabase.from('service_order_photos').select('*').eq('os_id', id);
       if (photosData) setPhotos(photosData);
+
+      // 4. Fetch Time Entries
+      const { data: timeData } = await supabase.from('os_tempo').select('*').eq('os_id', id).order('start_time', { ascending: false });
+      if (timeData) {
+        setTimeEntries(timeData);
+        // Check for active timer
+        const active = timeData.find((t: TimeEntry) => !t.end_time);
+        if (active) setActiveTimerEntry(active);
+      }
 
     } catch (error) {
       console.error("Error fetching OS:", error);
-      alert("Erro ao carregar dados da OS. Verifique se a base de dados foi inicializada.");
+      alert("Erro ao carregar dados da OS.");
     } finally {
       setLoading(false);
     }
@@ -145,6 +185,305 @@ const ServiceOrderDetail: React.FC = () => {
     }
   };
 
+  const formatDuration = (seconds: number) => {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // --- Time Tracking Handlers ---
+  
+  const handleStartTimer = async () => {
+    if (activeTimerEntry) return;
+
+    const newEntry: TimeEntry = {
+      id: isDemo ? Math.random().toString() : '', // Placeholder for demo
+      os_id: os.id,
+      start_time: new Date().toISOString(),
+      end_time: null,
+      description: 'Trabalho em execução'
+    };
+
+    if (isDemo) {
+      setActiveTimerEntry(newEntry);
+      setTimeEntries([newEntry, ...timeEntries]);
+      handleUpdateStatus(OSStatus.EM_EXECUCAO); // Auto update status
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.from('os_tempo').insert({
+        os_id: os.id,
+        start_time: newEntry.start_time,
+        description: newEntry.description
+      }).select().single();
+
+      if (error) throw error;
+      setActiveTimerEntry(data);
+      setTimeEntries([data, ...timeEntries]);
+      handleUpdateStatus(OSStatus.EM_EXECUCAO);
+    } catch (e) {
+      console.error("Erro ao iniciar timer:", e);
+      alert("Erro ao iniciar contagem de tempo.");
+    }
+  };
+
+  const handleStopTimer = async () => {
+    if (!activeTimerEntry) return;
+
+    const endTime = new Date().toISOString();
+    const startTime = new Date(activeTimerEntry.start_time);
+    const durationMinutes = Math.round((new Date(endTime).getTime() - startTime.getTime()) / 60000);
+
+    if (isDemo) {
+      const updatedEntry = { ...activeTimerEntry, end_time: endTime, duration_minutes: durationMinutes };
+      setActiveTimerEntry(null);
+      setTimeEntries(timeEntries.map(t => t.id === activeTimerEntry.id ? updatedEntry : t));
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('os_tempo').update({
+        end_time: endTime,
+        duration_minutes: durationMinutes
+      }).eq('id', activeTimerEntry.id);
+
+      if (error) throw error;
+      
+      // Refresh list
+      const { data } = await supabase.from('os_tempo').select('*').eq('os_id', os.id).order('start_time', { ascending: false });
+      if (data) setTimeEntries(data);
+      setActiveTimerEntry(null);
+
+    } catch (e) {
+      console.error("Erro ao parar timer:", e);
+      alert("Erro ao parar contagem de tempo.");
+    }
+  };
+
+  const handleManualTimeAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualStart || !manualEnd) return;
+
+    const start = new Date(manualStart);
+    const end = new Date(manualEnd);
+    
+    if (end <= start) {
+      alert("A hora de fim deve ser superior à hora de início.");
+      return;
+    }
+
+    const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+
+    if (isDemo) {
+      const newEntry: TimeEntry = {
+        id: Math.random().toString(),
+        os_id: os.id,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        duration_minutes: durationMinutes,
+        description: 'Registo manual'
+      };
+      setTimeEntries([newEntry, ...timeEntries]);
+      setManualStart('');
+      setManualEnd('');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.from('os_tempo').insert({
+        os_id: os.id,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        duration_minutes: durationMinutes,
+        description: 'Registo manual'
+      }).select().single();
+
+      if (error) throw error;
+      setTimeEntries([data, ...timeEntries]);
+      setManualStart('');
+      setManualEnd('');
+    } catch (e) {
+      console.error("Erro ao adicionar tempo:", e);
+      alert("Erro ao registar tempo.");
+    }
+  };
+
+  const handleDeleteTimeEntry = async (entryId: string) => {
+    if (!confirm("Tem a certeza que deseja apagar este registo de tempo?")) return;
+
+    if (isDemo) {
+      setTimeEntries(timeEntries.filter(t => t.id !== entryId));
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('os_tempo').delete().eq('id', entryId);
+      if (error) throw error;
+      setTimeEntries(timeEntries.filter(t => t.id !== entryId));
+    } catch (e) {
+      alert("Erro ao apagar registo.");
+    }
+  };
+
+  const totalMinutes = timeEntries.reduce((acc, curr) => acc + (curr.duration_minutes || 0), 0);
+  const totalHours = (totalMinutes / 60).toFixed(1);
+
+  // --- PDF Generation ---
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF();
+
+    // Company Header
+    doc.setFillColor(240, 240, 240);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setFontSize(22);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Hotelaria Assist', 20, 20);
+    doc.setFontSize(10);
+    doc.text('Relatório de Serviço Técnico', 20, 28);
+    
+    // OS Code
+    doc.setFontSize(16);
+    doc.text(os.code, 150, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(new Date().toLocaleDateString(), 150, 26);
+
+    // Client Info
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.text('Cliente', 20, 50);
+    doc.setLineWidth(0.5);
+    doc.line(20, 52, 190, 52);
+    
+    doc.setFontSize(10);
+    doc.text(`Nome: ${os.client?.name || ''}`, 20, 60);
+    doc.text(`Morada: ${os.client?.address || ''}`, 20, 66);
+    doc.text(`Contacto: ${os.client?.contact_person || ''} (${os.client?.phone || ''})`, 20, 72);
+
+    // Equipment Info
+    doc.setFontSize(12);
+    doc.text('Equipamento', 110, 50);
+    doc.line(110, 52, 190, 52); // Only partial line visual
+    
+    doc.setFontSize(10);
+    doc.text(`Tipo: ${os.equipment?.type || ''}`, 110, 60);
+    doc.text(`Marca/Modelo: ${os.equipment?.brand || ''} ${os.equipment?.model || ''}`, 110, 66);
+    doc.text(`Nº Série: ${os.equipment?.serial_number || ''}`, 110, 72);
+
+    let currentY = 85;
+
+    // Description
+    doc.setFontSize(11);
+    doc.setFillColor(245, 245, 245);
+    doc.rect(20, currentY, 170, 8, 'F');
+    doc.text('Problema Reportado', 22, currentY + 6);
+    currentY += 12;
+    doc.setFontSize(10);
+    const descLines = doc.splitTextToSize(os.description, 170);
+    doc.text(descLines, 20, currentY);
+    currentY += (descLines.length * 5) + 5;
+
+    // Resolution
+    if (notes) {
+      doc.setFontSize(11);
+      doc.setFillColor(245, 245, 245);
+      doc.rect(20, currentY, 170, 8, 'F');
+      doc.text('Relatório Técnico', 22, currentY + 6);
+      currentY += 12;
+      doc.setFontSize(10);
+      const resLines = doc.splitTextToSize(notes, 170);
+      doc.text(resLines, 20, currentY);
+      currentY += (resLines.length * 5) + 10;
+    }
+
+    // Parts Table
+    if (partsUsed.length > 0) {
+      doc.setFontSize(11);
+      doc.text('Materiais', 20, currentY);
+      currentY += 2;
+      
+      const partsBody = partsUsed.map(p => [
+        p.reference, 
+        p.name, 
+        p.quantity.toString(), 
+        `${p.price.toFixed(2)}€`, 
+        `${(p.price * p.quantity).toFixed(2)}€`
+      ]);
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Ref', 'Designação', 'Qtd', 'Preço Unit.', 'Total']],
+        body: partsBody,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 66, 66] }
+      });
+      // @ts-ignore
+      currentY = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Time Table
+    if (timeEntries.length > 0) {
+        doc.setFontSize(11);
+        doc.text('Registo de Tempos', 20, currentY);
+        currentY += 2;
+
+        const timeBody = timeEntries.map(t => [
+            new Date(t.start_time).toLocaleDateString(),
+            new Date(t.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+            t.end_time ? new Date(t.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-',
+            t.duration_minutes ? `${t.duration_minutes} min` : '-'
+        ]);
+
+        autoTable(doc, {
+            startY: currentY,
+            head: [['Data', 'Início', 'Fim', 'Duração']],
+            body: timeBody,
+            theme: 'plain',
+            styles: { fontSize: 9 }
+        });
+        // @ts-ignore
+        currentY = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Totals
+    const totalParts = partsUsed.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+    
+    doc.setFontSize(10);
+    doc.text(`Total Peças: ${totalParts.toFixed(2)}€`, 140, currentY);
+    doc.text(`Total Horas: ${totalHours}h`, 140, currentY + 5);
+
+    // Signature
+    currentY += 20;
+    if (currentY > 250) {
+        doc.addPage();
+        currentY = 20;
+    }
+
+    if (signature) {
+        doc.text('Assinatura do Cliente:', 20, currentY);
+        try {
+            doc.addImage(signature, 'PNG', 20, currentY + 5, 60, 30);
+        } catch (e) {
+            doc.text('(Erro ao carregar imagem)', 20, currentY + 15);
+        }
+    } else {
+        doc.text('Assinatura não recolhida.', 20, currentY);
+    }
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for(let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${pageCount} - Gerado por GestãoOS`, 100, 290, { align: 'center' });
+    }
+
+    doc.save(`Relatorio_${os.code}.pdf`);
+  };
+
   // --- Handlers ---
 
   const handleUpdateStatus = async (newStatus: OSStatus) => {
@@ -157,7 +496,21 @@ const ServiceOrderDetail: React.FC = () => {
     if (newStatus === OSStatus.FINALIZADA) {
       updates.end_time = now;
       updates.resolution_notes = notes;
+      updates.internal_notes = internalNotes; // Save internal notes on finish
       updates.client_signature = signature || undefined;
+      updates.scheduled_date = os.scheduled_date; // Ensure scheduled date is saved
+      
+      // Stop timer if running when finishing
+      if (activeTimerEntry) {
+         await handleStopTimer();
+      }
+    } else {
+        // Save internal notes on other status changes too, just in case
+        updates.internal_notes = internalNotes;
+    }
+
+    if (newStatus === OSStatus.PAUSA && activeTimerEntry) {
+      await handleStopTimer();
     }
 
     setOs({ ...os, ...updates });
@@ -193,11 +546,12 @@ const ServiceOrderDetail: React.FC = () => {
   };
 
   const handleFinish = async () => {
-    if (!notes) {
+    if (!notes || notes.trim() === '') {
       alert("Por favor, preencha o relatório técnico antes de finalizar.");
       setActiveTab('finalizar');
       return;
     }
+    // Validation for date removed
     if (!signature && !isDemo) {
       if(!confirm("Não recolheu a assinatura do cliente. Deseja finalizar mesmo assim?")) return;
     }
@@ -220,7 +574,6 @@ const ServiceOrderDetail: React.FC = () => {
     setShowPartModal(false);
 
     if (!isDemo && os) {
-      // Save to Supabase
       try {
          await supabase.from('service_order_parts').insert({
            os_id: os.id,
@@ -239,11 +592,8 @@ const ServiceOrderDetail: React.FC = () => {
     setPartsUsed(partsUsed.filter(p => p.id !== id));
 
     if (!isDemo && partToRemove) {
-      // Remove from Supabase (assuming 'id' matches DB primary key or we handle it via reference/os_id lookup if strictly relational)
-      // Note: In a strict relational model, we'd need the real DB ID. 
-      // For this example, we optimistically assume we can delete by matching properties or the ID if it was fetched from DB.
       try {
-        await supabase.from('service_order_parts').delete().eq('id', id); // Logic assumes ID is correct
+        await supabase.from('service_order_parts').delete().eq('id', id);
       } catch (e) { console.error("Error deleting part", e); }
     }
   };
@@ -258,33 +608,29 @@ const ServiceOrderDetail: React.FC = () => {
         if (ev.target?.result) {
           const base64 = ev.target.result as string;
           
-          // UI Optimistic Update
           const newPhotoMock: OSPhoto = {
             id: Math.random().toString(),
             os_id: os?.id || '',
-            url: base64, // Display base64 immediately
+            url: base64,
             type: 'geral',
             created_at: new Date().toISOString()
           };
           setPhotos([...photos, newPhotoMock]);
 
-          // Real Upload
           if (!isDemo && os) {
             try {
-              // 1. Upload to Storage (Simplistic implementation)
               const fileName = `${os.id}/${Date.now()}_${file.name}`;
               const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('os-photos') // Bucket must exist
+                .from('os-photos')
                 .upload(fileName, file);
 
-              let publicUrl = base64; // Fallback to base64 if storage fails or not configured
+              let publicUrl = base64;
               
               if (!uploadError && uploadData) {
                  const { data: { publicUrl: url } } = supabase.storage.from('os-photos').getPublicUrl(fileName);
                  publicUrl = url;
               }
 
-              // 2. Save metadata to DB
               await supabase.from('service_order_photos').insert({
                 os_id: os.id,
                 url: publicUrl,
@@ -292,7 +638,7 @@ const ServiceOrderDetail: React.FC = () => {
               });
 
             } catch (err) {
-              console.warn("Storage upload failed (bucket might be missing), saved locally only.", err);
+              console.warn("Storage upload failed, saved locally only.", err);
             }
           }
         }
@@ -306,20 +652,11 @@ const ServiceOrderDetail: React.FC = () => {
     setIsGenerating(true);
     const partsNames = partsUsed.map(p => `${p.quantity}x ${p.name}`);
     
-    // Calculate simple duration if possible
-    let duration = 'N/A';
-    if (os?.start_time) {
-      const start = new Date(os.start_time).getTime();
-      const end = os.end_time ? new Date(os.end_time).getTime() : Date.now();
-      const diffHrs = ((end - start) / 3600000).toFixed(1);
-      duration = `${diffHrs} horas`;
-    }
-
     const summary = await generateOSReportSummary(
         os?.description || '',
         notes || 'Reparação efetuada.',
         partsNames,
-        duration 
+        `${totalHours} horas` 
     );
     setGeneratedSummary(summary);
     setNotes(summary);
@@ -327,6 +664,9 @@ const ServiceOrderDetail: React.FC = () => {
   };
 
   const isReadOnly = os.status === OSStatus.FINALIZADA || os.status === OSStatus.FATURADA;
+
+  // Validation Check - Modified to remove scheduled_date check
+  const isFormValid = notes.trim().length > 0;
 
   return (
     <div className="max-w-4xl mx-auto pb-20 relative">
@@ -363,19 +703,26 @@ const ServiceOrderDetail: React.FC = () => {
       {/* Header with Sticky Actions */}
       <div className="bg-white shadow-md rounded-xl p-4 mb-6 sticky top-0 z-10 border-b border-gray-200 transition-all">
         <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900">{os.code}</h1>
-              <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(os.status)}`}>
-                {getStatusLabel(os.status)}
-              </span>
-            </div>
-            <p className="text-gray-500 text-sm mt-1">{os.client?.name} - {os.equipment?.type}</p>
+          <div className="flex items-center gap-3">
+             <button
+               onClick={() => navigate(-1)}
+               className="p-2 -ml-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+               title="Voltar"
+             >
+               <ArrowLeft size={24} />
+             </button>
+             <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-bold text-gray-900">{os.code}</h1>
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(os.status)}`}>
+                    {getStatusLabel(os.status)}
+                  </span>
+                </div>
+                <p className="text-gray-500 text-sm mt-1">{os.client?.name} - {os.equipment?.type}</p>
+             </div>
           </div>
           
           <div className="flex gap-2 w-full md:w-auto flex-wrap justify-end">
-            
-            {/* ACTION BUTTONS */}
             
             {(os.status === OSStatus.ABERTA || os.status === OSStatus.ATRIBUIDA) && (
               <button 
@@ -402,7 +749,7 @@ const ServiceOrderDetail: React.FC = () => {
                 <button 
                   onClick={handlePauseOS}
                   disabled={actionLoading}
-                  className="flex-1 md:flex-none flex items-center justify-center bg-orange-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-orange-600 transition-colors disabled:opacity-50"
+                  className="flex-1 md:flex-none flex items-center justify-center bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
                 >
                   <Pause size={18} className="mr-2" /> Pausa
                 </button>
@@ -413,6 +760,16 @@ const ServiceOrderDetail: React.FC = () => {
                   <CheckSquare size={18} className="mr-2" /> Finalizar
                 </button>
               </>
+            )}
+
+            {(os.status === OSStatus.FINALIZADA || os.status === OSStatus.FATURADA) && (
+              <button 
+                onClick={handleDownloadPDF}
+                className="flex-1 md:flex-none flex items-center justify-center bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+                title="Descarregar Relatório PDF"
+              >
+                <Download size={18} className="mr-2 text-red-600" /> PDF
+              </button>
             )}
 
             {os.status === OSStatus.FINALIZADA && (
@@ -445,7 +802,7 @@ const ServiceOrderDetail: React.FC = () => {
 
       {/* Tabs */}
       <div className="flex overflow-x-auto border-b border-gray-200 bg-white mb-6 rounded-t-lg">
-        {['info', 'pecas', 'fotos', 'finalizar'].map((tab) => (
+        {['info', 'pecas', 'fotos', 'tempo', 'finalizar'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab as any)}
@@ -459,6 +816,7 @@ const ServiceOrderDetail: React.FC = () => {
             {tab === 'info' && 'Detalhes'}
             {tab === 'pecas' && <>Peças <span className="ml-2 bg-gray-200 text-gray-700 px-1.5 rounded-full text-xs">{partsUsed.length}</span></>}
             {tab === 'fotos' && <>Fotos <span className="ml-2 bg-gray-200 text-gray-700 px-1.5 rounded-full text-xs">{photos.length}</span></>}
+            {tab === 'tempo' && 'Tempos'}
             {tab === 'finalizar' && 'Relatório'}
           </button>
         ))}
@@ -470,26 +828,49 @@ const ServiceOrderDetail: React.FC = () => {
         {/* TAB: INFO */}
         {activeTab === 'info' && (
           <div className="grid md:grid-cols-2 gap-6">
-             <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
-               <h3 className="font-semibold text-gray-900 flex items-center"><PenTool size={18} className="mr-2"/> Equipamento</h3>
-               <div className="text-sm space-y-3">
-                 <div className="flex justify-between border-b border-gray-100 pb-2">
-                    <span className="text-gray-500">Equipamento</span> 
-                    <span className="font-medium text-right">{os.equipment?.type}</span>
+             <div className="space-y-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
+                  <h3 className="font-semibold text-gray-900 flex items-center"><Calendar size={18} className="mr-2"/> Agendamento</h3>
+                   {/* Date Field Moved Here */}
+                  <div className="">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Prevista / Agendada</label>
+                    <div className="relative max-w-sm">
+                      <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                      <input
+                        type="date"
+                        value={os.scheduled_date ? os.scheduled_date.split('T')[0] : ''}
+                        onChange={(e) => setOs({...os, scheduled_date: e.target.value})}
+                        readOnly={isReadOnly}
+                        disabled={isReadOnly}
+                        className={`
+                          w-full pl-10 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border-gray-300 p-2 text-sm
+                        `}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                 <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
+                   <h3 className="font-semibold text-gray-900 flex items-center"><PenTool size={18} className="mr-2"/> Equipamento</h3>
+                   <div className="text-sm space-y-3">
+                     <div className="flex justify-between border-b border-gray-100 pb-2">
+                        <span className="text-gray-500">Equipamento</span> 
+                        <span className="font-medium text-right">{os.equipment?.type}</span>
+                     </div>
+                     <div className="flex justify-between border-b border-gray-100 pb-2">
+                        <span className="text-gray-500">Marca / Modelo</span> 
+                        <span className="font-medium text-right">{os.equipment?.brand} {os.equipment?.model}</span>
+                     </div>
+                     <div className="flex justify-between border-b border-gray-100 pb-2">
+                        <span className="text-gray-500">Nº Série</span> 
+                        <span className="font-medium text-right">{os.equipment?.serial_number}</span>
+                     </div>
+                     <div className="flex justify-between">
+                        <span className="text-gray-500">Localização</span> 
+                        <span className="font-medium text-right">{os.client?.address}</span>
+                     </div>
+                   </div>
                  </div>
-                 <div className="flex justify-between border-b border-gray-100 pb-2">
-                    <span className="text-gray-500">Marca / Modelo</span> 
-                    <span className="font-medium text-right">{os.equipment?.brand} {os.equipment?.model}</span>
-                 </div>
-                 <div className="flex justify-between border-b border-gray-100 pb-2">
-                    <span className="text-gray-500">Nº Série</span> 
-                    <span className="font-medium text-right">{os.equipment?.serial_number}</span>
-                 </div>
-                 <div className="flex justify-between">
-                    <span className="text-gray-500">Localização</span> 
-                    <span className="font-medium text-right">{os.client?.address}</span>
-                 </div>
-               </div>
              </div>
              
              <div className="space-y-6">
@@ -501,20 +882,19 @@ const ServiceOrderDetail: React.FC = () => {
                 </div>
 
                 <div className="bg-white p-6 rounded-xl shadow-sm border">
-                   <h3 className="font-semibold text-gray-900 mb-4">Tempos</h3>
+                   <h3 className="font-semibold text-gray-900 mb-4">Resumo Global</h3>
                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-500 block mb-1">Início</span>
-                        <div className="flex items-center font-medium">
-                          <Clock size={16} className="mr-2 text-green-600" />
-                          {os.start_time ? new Date(os.start_time).toLocaleString() : '-'}
+                        <span className="text-gray-500 block mb-1">Total Peças</span>
+                        <div className="flex items-center font-medium text-lg">
+                          {partsUsed.length}
                         </div>
                       </div>
                       <div>
-                        <span className="text-gray-500 block mb-1">Fim</span>
-                        <div className="flex items-center font-medium">
-                          <Calendar size={16} className="mr-2 text-blue-600" />
-                          {os.end_time ? new Date(os.end_time).toLocaleString() : '-'}
+                        <span className="text-gray-500 block mb-1">Total Horas</span>
+                        <div className="flex items-center font-medium text-lg">
+                          <Clock size={16} className="mr-2 text-blue-600" />
+                          {totalHours} h
                         </div>
                       </div>
                    </div>
@@ -603,11 +983,137 @@ const ServiceOrderDetail: React.FC = () => {
           </div>
         )}
 
+        {/* TAB: TEMPOS (New) */}
+        {activeTab === 'tempo' && (
+          <div className="space-y-6">
+            
+            {/* Active Timer Card */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                <Timer className="mr-2 text-blue-600" size={20} />
+                Cronómetro
+              </h3>
+              
+              <div className="flex flex-col items-center justify-center py-6 bg-slate-50 rounded-xl border border-slate-100 mb-4">
+                <div className="text-5xl font-mono font-bold text-slate-800 tracking-wider mb-2">
+                  {formatDuration(elapsedSeconds)}
+                </div>
+                <span className="text-sm text-gray-500">Tempo decorrido atual</span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {!activeTimerEntry ? (
+                  <button 
+                    onClick={handleStartTimer}
+                    disabled={isReadOnly}
+                    className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 flex items-center justify-center disabled:opacity-50"
+                  >
+                    <Play size={20} className="mr-2 fill-current" /> Iniciar Contagem
+                  </button>
+                ) : (
+                  <button 
+                    onClick={handleStopTimer}
+                    className="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 flex items-center justify-center"
+                  >
+                    <Pause size={20} className="mr-2 fill-current" /> Parar Contagem
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Manual Entry */}
+            {!isReadOnly && (
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
+                  <Plus className="mr-2 text-gray-600" size={20} />
+                  Adicionar Tempo Manual
+                </h3>
+                <form onSubmit={handleManualTimeAdd} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Início</label>
+                    <input 
+                      type="datetime-local" 
+                      required
+                      value={manualStart}
+                      onChange={(e) => setManualStart(e.target.value)}
+                      className="w-full border-gray-300 rounded-lg p-2 text-sm border focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Fim</label>
+                    <input 
+                      type="datetime-local" 
+                      required
+                      value={manualEnd}
+                      onChange={(e) => setManualEnd(e.target.value)}
+                      className="w-full border-gray-300 rounded-lg p-2 text-sm border focus:ring-blue-500"
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    className="bg-gray-800 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-gray-700"
+                  >
+                    Adicionar Registo
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Log History */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+               <div className="flex justify-between items-center mb-4">
+                 <h3 className="font-semibold text-gray-900 flex items-center">
+                   <History className="mr-2 text-gray-600" size={20} />
+                   Registos de Tempo
+                 </h3>
+                 <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
+                   Total: {totalHours}h ({totalMinutes} min)
+                 </span>
+               </div>
+               
+               {timeEntries.length === 0 ? (
+                 <div className="text-center py-8 text-gray-400 text-sm">Nenhum registo de tempo.</div>
+               ) : (
+                 <div className="space-y-3">
+                   {timeEntries.map((entry) => (
+                     <div key={entry.id} className="flex justify-between items-center p-3 bg-gray-50 border border-gray-100 rounded-lg">
+                       <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {new Date(entry.start_time).toLocaleDateString()}
+                          </div>
+                          <div className="text-xs text-gray-500 flex items-center gap-2">
+                             <span>{new Date(entry.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                             <span>➔</span>
+                             <span>{entry.end_time ? new Date(entry.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Em curso...'}</span>
+                          </div>
+                       </div>
+                       <div className="flex items-center gap-4">
+                         <span className={`font-bold ${!entry.end_time ? 'text-green-600 animate-pulse' : 'text-gray-700'}`}>
+                           {entry.end_time ? `${entry.duration_minutes} min` : 'A decorrer'}
+                         </span>
+                         {!isReadOnly && entry.end_time && (
+                           <button 
+                             onClick={() => handleDeleteTimeEntry(entry.id)}
+                             className="text-gray-400 hover:text-red-500 transition-colors"
+                           >
+                             <Trash2 size={16} />
+                           </button>
+                         )}
+                       </div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+            </div>
+          </div>
+        )}
+
         {/* TAB: FINALIZAR */}
         {activeTab === 'finalizar' && (
           <div className="space-y-6">
             <div className="bg-white p-6 rounded-xl shadow-sm border">
-              <div className="flex justify-between items-center mb-4">
+              
+              <div className="flex justify-between items-center mb-6">
                  <h3 className="font-semibold text-gray-900">Relatório Técnico</h3>
                  {!isReadOnly && (
                    <button 
@@ -620,20 +1126,46 @@ const ServiceOrderDetail: React.FC = () => {
                    </button>
                  )}
               </div>
-              
+
+              <label className="block text-sm font-medium text-gray-700 mb-1">Descrição do Trabalho</label>
               <textarea 
-                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 min-h-[150px] p-3 border disabled:bg-gray-50 disabled:text-gray-500"
+                className={`
+                  w-full border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 min-h-[150px] p-3 
+                  disabled:bg-gray-50 disabled:text-gray-500
+                  ${!notes.trim() && !isReadOnly ? 'border-red-300 bg-red-50' : 'border-gray-300'}
+                `}
                 placeholder="Descreva o trabalho realizado, anomalias encontradas e recomendações..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 readOnly={isReadOnly}
                 disabled={isReadOnly}
               />
+              {!notes.trim() && !isReadOnly && (
+                 <span className="text-xs text-red-500 mt-1 block">O relatório técnico é obrigatório.</span>
+              )}
               {generatedSummary && !isReadOnly && (
                 <div className="mt-2 text-xs text-gray-500 italic">
                   * Resumo gerado automaticamente. Verifique antes de guardar.
                 </div>
               )}
+            </div>
+
+            {/* Internal Notes Section - NEW */}
+            <div className="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-200">
+                <h3 className="font-semibold text-yellow-900 mb-2 flex items-center">
+                    <Lock size={16} className="mr-2"/> Notas Internas (Privado)
+                </h3>
+                <p className="text-xs text-yellow-700 mb-3">
+                  Informações visíveis apenas para a equipa técnica e backoffice. Não partilhado com o cliente.
+                </p>
+                <textarea 
+                  className="w-full border-yellow-300 bg-white rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 min-h-[100px] p-3 border disabled:bg-gray-50 disabled:text-gray-500"
+                  placeholder="Códigos de acesso, dificuldades técnicas, notas sobre o cliente..."
+                  value={internalNotes}
+                  onChange={(e) => setInternalNotes(e.target.value)}
+                  readOnly={isReadOnly}
+                  disabled={isReadOnly}
+                />
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-sm border">
@@ -661,8 +1193,12 @@ const ServiceOrderDetail: React.FC = () => {
             {!isReadOnly && (
               <button 
                 onClick={handleFinish}
-                disabled={actionLoading}
-                className="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 shadow-lg flex items-center justify-center text-lg disabled:opacity-70 transition-all"
+                disabled={actionLoading || !isFormValid}
+                className={`
+                  w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center text-lg transition-all
+                  ${!isFormValid ? 'opacity-50 cursor-not-allowed bg-gray-400' : 'hover:bg-blue-700'}
+                `}
+                title={!isFormValid ? "Preencha o relatório para finalizar" : "Finalizar OS"}
               >
                 {actionLoading ? 'A finalizar...' : <><Save size={24} className="mr-2" /> Finalizar Ordem de Serviço</>}
               </button>
