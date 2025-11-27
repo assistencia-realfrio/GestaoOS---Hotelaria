@@ -1,0 +1,9 @@
+{
+  "name": "Copy of GestãoOS - Hotelaria",
+  "description": "Sistema completo de gestão de Ordens de Serviço para equipamentos de hotelaria. Inclui painel de administração e aplicação móvel para técnicos.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
