@@ -120,6 +120,23 @@ const NewClient: React.FC = () => {
             </div>
           </div>
 
+          {/* Nome da Faturação (Opcional) */}
+          <div>
+            <label htmlFor="billing_name" className="block text-sm font-medium text-gray-700 mb-1">Nome da Faturação (Opcional)</label>
+            <div className="relative">
+              <ReceiptText className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                id="billing_name"
+                name="billing_name"
+                value={formData.billing_name}
+                onChange={handleChange}
+                className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
+                placeholder="Ex: Hotel Central, Lda."
+              />
+            </div>
+          </div>
+
           {/* Loja */}
           <div>
             <label htmlFor="store_id" className="block text-sm font-medium text-gray-700 mb-1">Loja Associada *</label>
@@ -208,23 +225,6 @@ const NewClient: React.FC = () => {
                 required
                 className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                 placeholder="Ex: João Silva"
-              />
-            </div>
-          </div>
-
-          {/* Nome da Faturação (Opcional) */}
-          <div>
-            <label htmlFor="billing_name" className="block text-sm font-medium text-gray-700 mb-1">Nome da Faturação (Opcional)</label>
-            <div className="relative">
-              <ReceiptText className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <input
-                type="text"
-                id="billing_name"
-                name="billing_name"
-                value={formData.billing_name}
-                onChange={handleChange}
-                className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
-                placeholder="Ex: Hotel Central, Lda."
               />
             </div>
           </div>
