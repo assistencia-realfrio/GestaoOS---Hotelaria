@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText, Edit, Plus } from 'lucide-react';
+import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText, Edit, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store, ClientType } from '../types';
 
@@ -70,6 +70,60 @@ const ClientDetail: React.FC = () => {
     fetchData();
   }, [id, isDemo]);
 
+  const handleDeleteClient = async () => {
+    if (!confirm("Tem a certeza que deseja apagar este cliente? Esta ação é irreversível e apagará todos os equipamentos e ordens de serviço associados.")) {
+      return;
+    }
+
+    if (isDemo) {
+      alert("Cliente apagado com sucesso! (Modo Demo)");
+      navigate('/clients');
+      return;
+    }
+
+    try {
+      // First, delete related equipments
+      const { error: equipmentError } = await supabase.from('equipments').delete().eq('client_id', id);
+      if (equipmentError) throw equipmentError;
+
+      // Then, delete related service orders
+      const { error: osError } = await supabase.from('service_orders').delete().eq('client_id', id);
+      if (osError) throw osError;
+
+      // Finally, delete the client
+      const { error: clientError } = await supabase.from('clients').delete().eq('id', id);
+      if (clientError) throw clientError;
+
+      alert("Cliente apagado com sucesso!");
+      navigate('/clients');
+    } catch (error) {
+      console.error("Error deleting client:", error);
+      alert("Erro ao apagar cliente. Verifique a consola para mais detalhes.");
+    }
+  };
+
+  const handleDeleteEquipment = async (equipmentId: string) => {
+    if (!confirm("Tem a certeza que deseja apagar este equipamento? Esta ação é irreversível.")) {
+      return;
+    }
+
+    if (isDemo) {
+      setEquipments(equipments.filter(eq => eq.id !== equipmentId));
+      alert("Equipamento apagado com sucesso! (Modo Demo)");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('equipments').delete().eq('id', equipmentId);
+      if (error) throw error;
+      setEquipments(equipments.filter(eq => eq.id !== equipmentId));
+      alert("Equipamento apagado com sucesso!");
+    } catch (error) {
+      console.error("Error deleting equipment:", error);
+      alert("Erro ao apagar equipamento.");
+    }
+  };
+
   if (loading) return <div className="p-8 text-center">A carregar...</div>;
   if (!client) return <div className="p-8 text-center">Cliente não encontrado.</div>;
 
@@ -120,7 +174,14 @@ const ClientDetail: React.FC = () => {
              </div>
           </div>
         </div>
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+          <button
+            onClick={handleDeleteClient}
+            className="flex items-center bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 shadow-sm transition-colors"
+          >
+            <Trash2 size={18} className="mr-2" />
+            Apagar Cliente
+          </button>
           <button
             onClick={() => navigate(`/clients/${client.id}/edit`)}
             className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition-colors"
@@ -180,7 +241,16 @@ const ClientDetail: React.FC = () => {
                        <p className="text-sm text-gray-600">Marca: <span className="font-medium text-gray-800">{eq.brand}</span></p>
                        <p className="text-sm text-gray-600">Modelo: <span className="font-medium text-gray-800">{eq.model}</span></p>
                        <p className="text-xs text-gray-500 mt-2">S/N: {eq.serial_number}</p>
-                       <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
+                       <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end gap-2">
+                         <button
+                           onClick={(e) => {
+                             e.preventDefault(); // Prevent navigating to client detail
+                             handleDeleteEquipment(eq.id);
+                           }}
+                           className="flex items-center text-xs text-red-600 hover:text-red-800 font-medium"
+                         >
+                           <Trash2 size={14} className="mr-1" /> Apagar
+                         </button>
                          <button
                            onClick={(e) => {
                              e.preventDefault(); // Prevent navigating to client detail
