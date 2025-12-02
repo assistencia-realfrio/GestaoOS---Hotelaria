@@ -19,7 +19,6 @@ const NewClient: React.FC = () => {
 
   const [formData, setFormData] = useState({
     name: '',
-    type: 'Hotel', // Default type
     address: '',
     phone: '',
     email: '',
@@ -68,7 +67,17 @@ const NewClient: React.FC = () => {
         return;
       }
 
-      const { error } = await supabase.from('clients').insert(formData);
+      // Assuming 'type' will be handled by a default value in the database or is no longer required.
+      const { error } = await supabase.from('clients').insert({
+        name: formData.name,
+        address: formData.address,
+        phone: formData.phone,
+        email: formData.email,
+        contact_person: formData.contact_person,
+        notes: formData.notes,
+        store_id: formData.store_id,
+        type: 'Outro' // Set a default type if not provided by the user
+      });
 
       if (error) throw error;
 
@@ -108,24 +117,6 @@ const NewClient: React.FC = () => {
                 placeholder="Ex: Hotel Central"
               />
             </div>
-          </div>
-
-          {/* Tipo de Cliente */}
-          <div>
-            <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Tipo de Cliente</label>
-            <select
-              id="type"
-              name="type"
-              value={formData.type}
-              onChange={handleChange}
-              className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
-            >
-              <option value="Hotel">Hotel</option>
-              <option value="Restaurante">Restaurante</option>
-              <option value="Cafetaria">Cafetaria</option>
-              <option value="Lavandaria">Lavandaria</option>
-              <option value="Outro">Outro</option>
-            </select>
           </div>
 
           {/* Loja */}
