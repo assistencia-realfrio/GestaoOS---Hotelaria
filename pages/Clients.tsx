@@ -79,10 +79,10 @@ const Clients: React.FC = () => {
     <div className="max-w-6xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-        <button className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
+        <Link to="/clients/new" className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition-colors">
           <Plus size={18} className="mr-2" />
           Novo Cliente
-        </button>
+        </Link>
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">

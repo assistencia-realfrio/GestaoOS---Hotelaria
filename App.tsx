@@ -9,6 +9,7 @@ import ServiceOrderDetail from './pages/ServiceOrderDetail';
 import NewServiceOrder from './pages/NewServiceOrder';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
+import NewClient from './pages/NewClient'; // Import the new component
 import Equipments from './pages/Equipments';
 import Profile from './pages/Profile';
 import { UserRole } from './types';
@@ -72,9 +73,11 @@ function App() {
         <Route path="/os/new" element={session ? <Layout userRole={role}><NewServiceOrder /></Layout> : <Navigate to="/login" />} />
         <Route path="/os/:id" element={session ? <Layout userRole={role}><ServiceOrderDetail /></Layout> : <Navigate to="/login" />} />
         
-        {/* New Routes */}
+        {/* Client Routes */}
         <Route path="/clients" element={session ? <Layout userRole={role}><Clients /></Layout> : <Navigate to="/login" />} />
+        <Route path="/clients/new" element={session ? <Layout userRole={role}><NewClient /></Layout> : <Navigate to="/login" />} /> {/* New Client Route */}
         <Route path="/clients/:id" element={session ? <Layout userRole={role}><ClientDetail /></Layout> : <Navigate to="/login" />} />
+        
         <Route path="/equipments" element={session ? <Layout userRole={role}><Equipments /></Layout> : <Navigate to="/login" />} />
         <Route path="/profile" element={session ? <Layout userRole={role}><Profile /></Layout> : <Navigate to="/login" />} />
         
