@@ -25,6 +25,15 @@ export enum OSType {
   REVISAO = 'revisao'
 }
 
+export enum ClientType { // Novo enum para tipos de cliente
+  HOTEL = 'Hotel',
+  RESTAURANTE = 'Restaurante',
+  CAFETERIA = 'Cafetaria',
+  LAVANDARIA = 'Lavandaria',
+  SUPERMERCADO = 'Supermercado',
+  OUTRO = 'Outro'
+}
+
 export interface Store {
   id: string;
   name: string;
@@ -37,7 +46,7 @@ export interface Store {
 export interface Client {
   id: string;
   name: string;
-  type: string;
+  type: ClientType; // Usar o novo enum ClientType
   address: string;
   phone: string;
   email: string;

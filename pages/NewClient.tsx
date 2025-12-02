@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Building2, MapPin, Phone, Mail, User, FileText, Save, ReceiptText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { Store } from '../types';
+import { Store, ClientType } from '../types'; // Import ClientType
 
 const MOCK_STORES: Store[] = [
   { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', short_code: 'CR', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
@@ -25,7 +25,8 @@ const NewClient: React.FC = () => {
     contact_person: '',
     notes: '',
     store_id: '',
-    billing_name: '', // Novo campo para o nome da faturação
+    billing_name: '',
+    type: ClientType.OUTRO, // Adicionar o campo 'type' com valor padrão
   });
 
   useEffect(() => {
@@ -56,14 +57,13 @@ const NewClient: React.FC = () => {
     setLoading(true);
 
     try {
-      // Only 'name' and 'store_id' are now strictly required
       if (!formData.name || !formData.store_id) {
         throw new Error("Por favor, preencha os campos obrigatórios: Nome do Cliente e Loja Associada.");
       }
 
       if (isDemo) {
-        console.log("Novo Cliente (Demo):", { ...formData, type: 'Outro' }); // Add default type for demo log
-        await new Promise(r => setTimeout(r, 1000)); // Simulate network delay
+        console.log("Novo Cliente (Demo):", formData);
+        await new Promise(r => setTimeout(r, 1000));
         alert("Cliente adicionado com sucesso! (Modo Demo)");
         navigate('/clients');
         return;
@@ -71,13 +71,13 @@ const NewClient: React.FC = () => {
 
       const { error } = await supabase.from('clients').insert({
         name: formData.name,
-        address: formData.address || null, // Now optional
-        phone: formData.phone || null,     // Now optional
-        email: formData.email || null,     // Now optional
-        contact_person: formData.contact_person || null, // Now optional
+        address: formData.address || null,
+        phone: formData.phone || null,
+        email: formData.email || null,
+        contact_person: formData.contact_person || null,
         notes: formData.notes || null,
         store_id: formData.store_id,
-        type: 'Outro', // Set a default type if not provided by the user
+        type: formData.type, // Usar o tipo selecionado
         billing_name: formData.billing_name || null,
       });
 
@@ -156,6 +156,22 @@ const NewClient: React.FC = () => {
             </select>
           </div>
 
+          {/* Tipo de Cliente */}
+          <div>
+            <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">Tipo de Cliente</label>
+            <select
+              id="type"
+              name="type"
+              value={formData.type}
+              onChange={handleChange}
+              className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
+            >
+              {Object.values(ClientType).map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Endereço */}
           <div>
             <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Morada (Opcional)</label>
@@ -167,7 +183,6 @@ const NewClient: React.FC = () => {
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                // Removed 'required'
                 className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                 placeholder="Ex: Rua da Liberdade, 10, 2500-000 Caldas da Rainha"
               />
@@ -186,7 +201,6 @@ const NewClient: React.FC = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  // Removed 'required'
                   className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                   placeholder="Ex: 912345678"
                 />
@@ -204,7 +218,6 @@ const NewClient: React.FC = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  // Removed 'required'
                   className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                   placeholder="Ex: geral@hotelcentral.pt"
                 />
@@ -223,7 +236,6 @@ const NewClient: React.FC = () => {
                 name="contact_person"
                 value={formData.contact_person}
                 onChange={handleChange}
-                // Removed 'required'
                 className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                 placeholder="Ex: João Silva"
               />
@@ -233,7 +245,6 @@ const NewClient: React.FC = () => {
           {/* Notas */}
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Notas (Opcional)</label>
-            {/* Removed the relative div and icon for textarea */}
             <textarea
               id="notes"
               name="notes"

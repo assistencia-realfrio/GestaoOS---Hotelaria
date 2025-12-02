@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Filter, Plus } from 'lucide-react';
-import { ServiceOrder, OSStatus, OSType, Client, Equipment, Store } from '../types';
+import { ServiceOrder, OSStatus, OSType, Client, Equipment, Store, ClientType } from '../types'; // Import ClientType
 import { supabase } from '../supabaseClient';
 
 // Mock data for demo mode (consistent with Clients.tsx)
@@ -11,10 +11,10 @@ const MOCK_STORES: Store[] = [
 ];
 
 const MOCK_CLIENTS: Client[] = [
-  { id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@hotel.pt', contact_person: 'Sr. Silva', store_id: MOCK_STORES[0].id, store: MOCK_STORES[0] },
-  { id: '2', name: 'Restaurante O Pescador', type: 'Restaurante', address: 'Rua do Porto 5, Setúbal', phone: '966554433', email: 'pescador@rest.pt', contact_person: 'D. Maria', store_id: MOCK_STORES[1].id, store: MOCK_STORES[1] },
-  { id: '3', name: 'Pastelaria Central', type: 'Pastelaria', address: 'Praça da República, Coimbra', phone: '239123123', email: 'geral@central.pt', contact_person: 'João Santos', store_id: MOCK_STORES[0].id, store: MOCK_STORES[0] },
-  { id: '4', name: 'Lavandaria Expresso', type: 'Lavandaria', address: 'Rua das Flores, Porto', phone: '223344556', email: 'info@expresso.pt', contact_person: 'Ana Costa', store_id: MOCK_STORES[1].id, store: MOCK_STORES[1] },
+  { id: '1', name: 'Hotel Baía Azul', type: ClientType.HOTEL, address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@hotel.pt', contact_person: 'Sr. Silva', store_id: MOCK_STORES[0].id, store: MOCK_STORES[0] },
+  { id: '2', name: 'Restaurante O Pescador', type: ClientType.RESTAURANTE, address: 'Rua do Porto 5, Setúbal', phone: '966554433', email: 'pescador@rest.pt', contact_person: 'D. Maria', store_id: MOCK_STORES[1].id, store: MOCK_STORES[1] },
+  { id: '3', name: 'Pastelaria Central', type: ClientType.CAFETERIA, address: 'Praça da República, Coimbra', phone: '239123123', email: 'geral@central.pt', contact_person: 'João Santos', store_id: MOCK_STORES[0].id, store: MOCK_STORES[0] },
+  { id: '4', name: 'Lavandaria Expresso', type: ClientType.LAVANDARIA, address: 'Rua das Flores, Porto', phone: '223344556', email: 'info@expresso.pt', contact_person: 'Ana Costa', store_id: MOCK_STORES[1].id, store: MOCK_STORES[1] },
 ];
 
 const MOCK_EQUIPMENTS: Equipment[] = [

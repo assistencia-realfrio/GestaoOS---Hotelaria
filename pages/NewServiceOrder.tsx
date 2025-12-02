@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft, Calendar, AlertTriangle, FileText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { Client, Equipment, OSType, Store, OSStatus } from '../types';
+import { Client, Equipment, OSType, Store, OSStatus, ClientType } from '../types'; // Import ClientType
 
 const NewServiceOrder: React.FC = () => {
   const navigate = useNavigate();
@@ -31,9 +31,9 @@ const NewServiceOrder: React.FC = () => {
   ];
 
   const MOCK_CLIENTS: Client[] = [
-    { id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[0].id },
-    { id: '2', name: 'Restaurante O Pescador', type: 'Restaurante', address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[1].id },
-    { id: '3', name: 'Pastelaria Central', type: 'Pastelaria', address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[0].id },
+    { id: '1', name: 'Hotel Baía Azul', type: ClientType.HOTEL, address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[0].id },
+    { id: '2', name: 'Restaurante O Pescador', type: ClientType.RESTAURANTE, address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[1].id },
+    { id: '3', name: 'Pastelaria Central', type: ClientType.CAFETERIA, address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[0].id },
   ];
 
   const MOCK_EQUIPMENTS: Equipment[] = [
