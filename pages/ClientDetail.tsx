@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom'; // Import useNavigate
-import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText, Edit } from 'lucide-react'; // Import Edit icon
+import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText, Edit, Plus } from 'lucide-react'; // Import Edit icon and Plus
 import { supabase } from '../supabaseClient';
 import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store, ClientType } from '../types';
 
@@ -54,7 +54,7 @@ const ClientDetail: React.FC = () => {
 
         // Fetch Equipment
         const { data: equipData } = await supabase.from('equipments').select('*').eq('client_id', id);
-        if (equipData) setEquipments(equipData);
+        if (equipData) setEquipments(equipData); // Corrected from setEquipData to setEquipments
 
         // Fetch History
         const { data: historyData } = await supabase.from('service_orders').select('*').eq('client_id', id).order('created_at', { ascending: false });
@@ -158,8 +158,11 @@ const ClientDetail: React.FC = () => {
           {activeTab === 'equipments' && (
             <div className="space-y-4">
               <div className="flex justify-end">
-                <button className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                  + Adicionar Equipamento
+                <button 
+                  onClick={() => navigate(`/clients/${client.id}/equipments/new`)}
+                  className="flex items-center text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
+                >
+                  <Plus size={16} className="mr-1" /> Adicionar Equipamento
                 </button>
               </div>
               {equipments.length === 0 ? (
