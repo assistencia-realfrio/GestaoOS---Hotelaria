@@ -45,6 +45,7 @@ export interface Client {
   notes?: string;
   store_id?: string; // New field
   store?: Store; // New field for joined data
+  billing_name?: string; // Novo campo para o nome da faturação
 }
 
 export interface Equipment {

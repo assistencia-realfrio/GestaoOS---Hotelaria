@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, MapPin, Phone, Mail, User, FileText, Save } from 'lucide-react';
+import { ArrowLeft, Building2, MapPin, Phone, Mail, User, FileText, Save, ReceiptText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Store } from '../types';
 
@@ -25,6 +25,7 @@ const NewClient: React.FC = () => {
     contact_person: '',
     notes: '',
     store_id: '',
+    billing_name: '', // Novo campo para o nome da faturação
   });
 
   useEffect(() => {
@@ -60,14 +61,13 @@ const NewClient: React.FC = () => {
       }
 
       if (isDemo) {
-        console.log("Novo Cliente (Demo):", formData);
+        console.log("Novo Cliente (Demo):", { ...formData, type: 'Outro' }); // Add default type for demo log
         await new Promise(r => setTimeout(r, 1000)); // Simulate network delay
         alert("Cliente adicionado com sucesso! (Modo Demo)");
         navigate('/clients');
         return;
       }
 
-      // Assuming 'type' will be handled by a default value in the database or is no longer required.
       const { error } = await supabase.from('clients').insert({
         name: formData.name,
         address: formData.address,
@@ -76,7 +76,8 @@ const NewClient: React.FC = () => {
         contact_person: formData.contact_person,
         notes: formData.notes,
         store_id: formData.store_id,
-        type: 'Outro' // Set a default type if not provided by the user
+        type: 'Outro', // Set a default type if not provided by the user
+        billing_name: formData.billing_name || null, // Save billing_name, or null if empty
       });
 
       if (error) throw error;
@@ -207,6 +208,23 @@ const NewClient: React.FC = () => {
                 required
                 className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                 placeholder="Ex: João Silva"
+              />
+            </div>
+          </div>
+
+          {/* Nome da Faturação (Opcional) */}
+          <div>
+            <label htmlFor="billing_name" className="block text-sm font-medium text-gray-700 mb-1">Nome da Faturação (Opcional)</label>
+            <div className="relative">
+              <ReceiptText className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+              <input
+                type="text"
+                id="billing_name"
+                name="billing_name"
+                value={formData.billing_name}
+                onChange={handleChange}
+                className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
+                placeholder="Ex: Hotel Central, Lda."
               />
             </div>
           </div>
