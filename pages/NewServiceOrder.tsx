@@ -244,9 +244,9 @@ const NewServiceOrder: React.FC = () => {
             </div>
           </div>
 
-          {/* Data Prevista */}
+          {/* Data do Pedido */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Data Agendada</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data do Pedido</label>
             <div className="relative max-w-sm">
               <Calendar className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
