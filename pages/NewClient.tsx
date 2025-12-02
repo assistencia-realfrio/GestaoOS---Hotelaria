@@ -233,18 +233,16 @@ const NewClient: React.FC = () => {
           {/* Notas */}
           <div>
             <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Notas (Opcional)</label>
-            <div className="relative">
-              <FileText className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-              <textarea
-                id="notes"
-                name="notes"
-                rows={3}
-                value={formData.notes}
-                onChange={handleChange}
-                className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
-                placeholder="Informações adicionais sobre o cliente..."
-              />
-            </div>
+            {/* Removed the relative div and icon for textarea */}
+            <textarea
+              id="notes"
+              name="notes"
+              rows={3}
+              value={formData.notes}
+              onChange={handleChange}
+              className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
+              placeholder="Informações adicionais sobre o cliente..."
+            />
           </div>
 
           <div className="pt-4 flex justify-end">
