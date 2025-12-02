@@ -35,6 +35,7 @@ function App() {
       if (supabaseSession) {
         setSession(supabaseSession);
         // In a real app, fetch role from 'profiles' table here using supabaseSession.user.id
+        // For now, we'll keep it as TECNICO for simplicity in this context.
         setRole(UserRole.TECNICO); 
       }
       

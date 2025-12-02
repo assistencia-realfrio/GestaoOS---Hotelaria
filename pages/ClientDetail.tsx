@@ -2,20 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { Client, Equipment, ServiceOrder, OSStatus, OSType } from '../types';
+import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store } from '../types';
 
 // Mock Data
+const MOCK_STORES: Store[] = [
+  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
+  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
+];
+
 const MOCK_CLIENT: Client = { 
-  id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@baiaazul.pt', contact_person: 'Sr. Silva', notes: 'Cliente preferencial. Acesso pelas traseiras.' 
+  id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@baiaazul.pt', contact_person: 'Sr. Silva', notes: 'Cliente preferencial. Acesso pelas traseiras.',
+  store_id: MOCK_STORES[0].id, store: MOCK_STORES[0]
 };
 
 const MOCK_EQUIPMENTS: Equipment[] = [
-  { id: 'eq-1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45CNE', serial_number: 'L00543', status: 'ativo' },
-  { id: 'eq-2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi Pro', serial_number: 'E112233', status: 'em_reparacao' },
+  { id: 'eq-1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45CNE', serial_number: 'L00543', status: 'ativo', store_id: MOCK_STORES[0].id },
+  { id: 'eq-2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi Pro', serial_number: 'E112233', status: 'em_reparacao', store_id: MOCK_STORES[0].id },
 ];
 
 const MOCK_HISTORY: ServiceOrder[] = [
-  { id: '1', code: 'OS-2023-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.FINALIZADA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15' },
+  { id: '1', code: 'OS-2023-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.FINALIZADA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15', store_id: MOCK_STORES[0].id },
 ];
 
 const ClientDetail: React.FC = () => {
@@ -39,7 +45,7 @@ const ClientDetail: React.FC = () => {
 
       try {
         // Fetch Client
-        const { data: clientData } = await supabase.from('clients').select('*').eq('id', id).single();
+        const { data: clientData } = await supabase.from('clients').select(`*, store:stores(name)`).eq('id', id).single();
         if (clientData) setClient(clientData);
 
         // Fetch Equipment
@@ -70,7 +76,12 @@ const ClientDetail: React.FC = () => {
         <div className="bg-slate-900 px-6 py-4">
           <div className="flex justify-between items-center">
              <h1 className="text-2xl font-bold text-white">{client.name}</h1>
-             <span className="bg-blue-600 text-white text-xs font-semibold px-2.5 py-0.5 rounded">{client.type}</span>
+             <div className="flex items-center gap-2">
+               <span className="bg-blue-600 text-white text-xs font-semibold px-2.5 py-0.5 rounded">{client.type}</span>
+               {client.store && (
+                 <span className="bg-gray-200 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded">{client.store.name}</span>
+               )}
+             </div>
           </div>
         </div>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">

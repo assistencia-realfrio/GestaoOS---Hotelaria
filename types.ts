@@ -1,4 +1,3 @@
-
 export enum UserRole {
   ADMIN = 'admin',
   BACKOFFICE = 'backoffice',
@@ -21,6 +20,14 @@ export enum OSType {
   REVISAO = 'revisao'
 }
 
+export interface Store {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -30,6 +37,8 @@ export interface Client {
   email: string;
   contact_person: string;
   notes?: string;
+  store_id?: string; // New field
+  store?: Store; // New field for joined data
 }
 
 export interface Equipment {
@@ -41,6 +50,8 @@ export interface Equipment {
   serial_number: string;
   install_date?: string;
   status: 'ativo' | 'inativo' | 'em_reparacao';
+  store_id?: string; // New field
+  store?: Store; // New field for joined data
 }
 
 export interface PartCatalogItem {
@@ -97,6 +108,8 @@ export interface ServiceOrder {
   client_signature?: string; // Base64 or URL
   client?: Client;
   equipment?: Equipment;
+  store_id?: string; // New field
+  store?: Store; // New field for joined data
 }
 
 export interface Profile {
@@ -105,4 +118,5 @@ export interface Profile {
   full_name: string;
   role: UserRole;
   avatar_url?: string;
+  store_id?: string; // New field for user's assigned store
 }

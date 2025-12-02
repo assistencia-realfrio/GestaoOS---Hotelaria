@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Play, Pause, CheckSquare, Camera, PenTool, Save, Wand2, Plus, Trash2, X, Package, FileCheck, RotateCcw, DollarSign, Clock, Calendar, Timer, History, Lock, FileText, Download, AlertTriangle, ArrowLeft } from 'lucide-react';
 import SignatureCanvas from '../components/SignatureCanvas';
-import { OSStatus, ServiceOrder, PartUsed, PartCatalogItem, OSPhoto, TimeEntry } from '../types';
+import { OSStatus, ServiceOrder, PartUsed, PartCatalogItem, OSPhoto, TimeEntry, Store } from '../types';
 import { generateOSReportSummary } from '../services/geminiService';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
@@ -16,6 +15,11 @@ const MOCK_CATALOG: PartCatalogItem[] = [
   { id: 'p3', name: 'Gás Refrigerante R404A (kg)', reference: 'GAS-404', price: 80.00, stock: 50 },
   { id: 'p4', name: 'Bomba de Água', reference: 'PUMP-H2O', price: 120.00, stock: 5 },
   { id: 'p5', name: 'Vedante Porta', reference: 'VED-09', price: 35.00, stock: 15 },
+];
+
+const MOCK_STORES: Store[] = [
+  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
+  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
 ];
 
 const ServiceOrderDetail: React.FC = () => {
@@ -92,6 +96,7 @@ const ServiceOrderDetail: React.FC = () => {
         priority: 'alta',
         created_at: new Date(Date.now() - 86400000).toISOString(),
         scheduled_date: new Date().toISOString().split('T')[0],
+        store_id: MOCK_STORES[0].id, store: MOCK_STORES[0], // Add store info
         client: {
           id: 'cli-1',
           name: 'Hotel Baía Azul',
@@ -99,7 +104,8 @@ const ServiceOrderDetail: React.FC = () => {
           contact_person: 'Sr. Silva',
           email: 'admin@baiaazul.pt',
           phone: '912345678',
-          type: 'Hotel'
+          type: 'Hotel',
+          store_id: MOCK_STORES[0].id
         },
         equipment: {
           id: 'eq-1',
@@ -108,7 +114,8 @@ const ServiceOrderDetail: React.FC = () => {
           model: 'IM-45CNE',
           serial_number: 'L00543',
           type: 'Máquina de Gelo',
-          status: 'ativo'
+          status: 'ativo',
+          store_id: MOCK_STORES[0].id
         }
       });
       // Mock Time Entries
@@ -123,7 +130,7 @@ const ServiceOrderDetail: React.FC = () => {
       // 1. Fetch OS Header
       const { data: osData, error: osError } = await supabase
         .from('service_orders')
-        .select(`*, client:clients(*), equipment:equipments(*)`)
+        .select(`*, client:clients(*), equipment:equipments(*), store:stores(name)`) // Fetch store details
         .eq('id', id)
         .single();
 
@@ -361,6 +368,9 @@ const ServiceOrderDetail: React.FC = () => {
     doc.text(`Nome: ${os.client?.name || ''}`, 20, 60);
     doc.text(`Morada: ${os.client?.address || ''}`, 20, 66);
     doc.text(`Contacto: ${os.client?.contact_person || ''} (${os.client?.phone || ''})`, 20, 72);
+    if (os.store) {
+      doc.text(`Loja: ${os.store.name}`, 20, 78);
+    }
 
     // Equipment Info
     doc.setFontSize(12);
@@ -744,7 +754,10 @@ const ServiceOrderDetail: React.FC = () => {
                     {getStatusLabel(os.status)}
                   </span>
                 </div>
-                <p className="text-gray-500 text-sm mt-1">{os.client?.name} - {os.equipment?.type}</p>
+                <p className="text-gray-500 text-sm mt-1">
+                  {os.client?.name} - {os.equipment?.type}
+                  {os.store && <span className="ml-2 text-gray-400">({os.store.name})</span>}
+                </p>
              </div>
           </div>
           
@@ -895,6 +908,12 @@ const ServiceOrderDetail: React.FC = () => {
                         <span className="text-gray-500">Localização</span> 
                         <span className="font-medium text-right">{os.client?.address}</span>
                      </div>
+                     {os.store && (
+                       <div className="flex justify-between border-t border-gray-100 pt-3 mt-3">
+                          <span className="text-gray-500">Loja</span> 
+                          <span className="font-medium text-right">{os.store.name}</span>
+                       </div>
+                     )}
                    </div>
                  </div>
              </div>

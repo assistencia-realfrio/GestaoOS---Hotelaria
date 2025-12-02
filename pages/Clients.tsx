@@ -2,45 +2,69 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, MapPin, Phone, Building2, Plus } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { Client } from '../types';
+import { Client, Store } from '../types';
 
 // Mock data for demo mode
+const MOCK_STORES: Store[] = [
+  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
+  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
+];
+
 const MOCK_CLIENTS: Client[] = [
-  { id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@hotel.pt', contact_person: 'Sr. Silva' },
-  { id: '2', name: 'Restaurante O Pescador', type: 'Restaurante', address: 'Rua do Porto 5, Setúbal', phone: '966554433', email: 'pescador@rest.pt', contact_person: 'D. Maria' },
-  { id: '3', name: 'Pastelaria Central', type: 'Pastelaria', address: 'Praça da República, Coimbra', phone: '239123123', email: 'geral@central.pt', contact_person: 'João Santos' },
-  { id: '4', name: 'Lavandaria Expresso', type: 'Lavandaria', address: 'Rua das Flores, Porto', phone: '223344556', email: 'info@expresso.pt', contact_person: 'Ana Costa' },
+  { id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@hotel.pt', contact_person: 'Sr. Silva', store_id: MOCK_STORES[0].id, store: MOCK_STORES[0] },
+  { id: '2', name: 'Restaurante O Pescador', type: 'Restaurante', address: 'Rua do Porto 5, Setúbal', phone: '966554433', email: 'pescador@rest.pt', contact_person: 'D. Maria', store_id: MOCK_STORES[1].id, store: MOCK_STORES[1] },
+  { id: '3', name: 'Pastelaria Central', type: 'Pastelaria', address: 'Praça da República, Coimbra', phone: '239123123', email: 'geral@central.pt', contact_person: 'João Santos', store_id: MOCK_STORES[0].id, store: MOCK_STORES[0] },
+  { id: '4', name: 'Lavandaria Expresso', type: 'Lavandaria', address: 'Rua das Flores, Porto', phone: '223344556', email: 'info@expresso.pt', contact_person: 'Ana Costa', store_id: MOCK_STORES[1].id, store: MOCK_STORES[1] },
 ];
 
 const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStoreId, setSelectedStoreId] = useState<string | undefined>(undefined);
   const isDemo = localStorage.getItem('demo_session') === 'true';
 
   useEffect(() => {
-    fetchClients();
-  }, []);
+    fetchData();
+  }, [selectedStoreId]); // Refetch when selectedStoreId changes
 
-  const fetchClients = async () => {
+  const fetchData = async () => {
+    setLoading(true);
     if (isDemo) {
-      setClients(MOCK_CLIENTS);
+      setStores(MOCK_STORES);
+      setClients(selectedStoreId ? MOCK_CLIENTS.filter(c => c.store_id === selectedStoreId) : MOCK_CLIENTS);
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase
-        .from('clients')
+      // Fetch Stores
+      const { data: storesData, error: storesError } = await supabase
+        .from('stores')
         .select('*')
         .order('name');
+      if (storesError) throw storesError;
+      setStores(storesData || []);
+
+      // Fetch Clients
+      let query = supabase
+        .from('clients')
+        .select(`*, store:stores(name)`) // Join with stores table
+        .order('name');
       
-      if (error) throw error;
-      setClients(data || []);
+      if (selectedStoreId) {
+        query = query.eq('store_id', selectedStoreId);
+      }
+
+      const { data: clientsData, error: clientsError } = await query;
+      
+      if (clientsError) throw clientsError;
+      setClients(clientsData || []);
     } catch (error) {
-      console.error('Error fetching clients:', error);
-      // Fallback to mock if API fails in what looks like a demo environment
-      setClients(MOCK_CLIENTS); 
+      console.error('Error fetching data:', error);
+      setClients(selectedStoreId ? MOCK_CLIENTS.filter(c => c.store_id === selectedStoreId) : MOCK_CLIENTS); 
+      setStores(MOCK_STORES);
     } finally {
       setLoading(false);
     }
@@ -62,17 +86,31 @@ const Clients: React.FC = () => {
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative md:col-span-2">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
+            </div>
+            <input
+              type="text"
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+              placeholder="Pesquisar por nome ou contacto..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-          <input
-            type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            placeholder="Pesquisar por nome ou contacto..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+          <div>
+            <select
+              value={selectedStoreId || ''}
+              onChange={(e) => setSelectedStoreId(e.target.value || undefined)}
+              className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-lg shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+            >
+              <option value="">Todas as Lojas</option>
+              {stores.map(store => (
+                <option key={store.id} value={store.id}>{store.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -107,6 +145,11 @@ const Clients: React.FC = () => {
                   <Phone size={16} className="mr-2 text-gray-400 flex-shrink-0" />
                   <span>{client.phone}</span>
                 </div>
+                {client.store && (
+                  <div className="flex items-center text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+                    <span className="font-medium text-gray-700">{client.store.name}</span>
+                  </div>
+                )}
               </div>
             </Link>
           ))}

@@ -2,16 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft, Calendar, AlertTriangle, FileText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { Client, Equipment, OSType } from '../types';
+import { Client, Equipment, OSType, Store } from '../types';
 
 const NewServiceOrder: React.FC = () => {
   const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
+    store_id: '', // New field
     client_id: '',
     equipment_id: '',
     type: OSType.AVARIA,
@@ -23,9 +25,35 @@ const NewServiceOrder: React.FC = () => {
   // Mock data for demo
   const isDemo = localStorage.getItem('demo_session') === 'true';
 
+  const MOCK_STORES: Store[] = [
+    { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', address: '', phone: '', email: '' },
+    { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', address: '', phone: '', email: '' },
+  ];
+
+  const MOCK_CLIENTS: Client[] = [
+    { id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[0].id },
+    { id: '2', name: 'Restaurante O Pescador', type: 'Restaurante', address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[1].id },
+    { id: '3', name: 'Pastelaria Central', type: 'Pastelaria', address: '', phone: '', email: '', contact_person: '', store_id: MOCK_STORES[0].id },
+  ];
+
+  const MOCK_EQUIPMENTS: Equipment[] = [
+    { id: '1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45', serial_number: '123', status: 'ativo', store_id: MOCK_STORES[0].id },
+    { id: '2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi', serial_number: '456', status: 'ativo', store_id: MOCK_STORES[0].id },
+    { id: '3', client_id: '2', type: 'Grelhador', brand: 'GrelhaMox', model: 'G500', serial_number: '789', status: 'ativo', store_id: MOCK_STORES[1].id },
+  ];
+
   useEffect(() => {
-    fetchClients();
+    fetchStores();
   }, []);
+
+  useEffect(() => {
+    if (formData.store_id) {
+      fetchClients(formData.store_id);
+    } else {
+      setClients([]);
+      setFormData(prev => ({ ...prev, client_id: '', equipment_id: '' }));
+    }
+  }, [formData.store_id]);
 
   // When client changes, fetch their equipment
   useEffect(() => {
@@ -33,29 +61,31 @@ const NewServiceOrder: React.FC = () => {
       fetchEquipments(formData.client_id);
     } else {
       setEquipments([]);
+      setFormData(prev => ({ ...prev, equipment_id: '' }));
     }
   }, [formData.client_id]);
 
-  const fetchClients = async () => {
+  const fetchStores = async () => {
     if (isDemo) {
-      setClients([
-        { id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: '', phone: '', email: '', contact_person: '' },
-        { id: '2', name: 'Restaurante O Pescador', type: 'Restaurante', address: '', phone: '', email: '', contact_person: '' },
-      ]);
+      setStores(MOCK_STORES);
       return;
     }
-    const { data } = await supabase.from('clients').select('id, name');
+    const { data } = await supabase.from('stores').select('id, name');
+    if (data) setStores(data as any);
+  };
+
+  const fetchClients = async (storeId: string) => {
+    if (isDemo) {
+      setClients(MOCK_CLIENTS.filter(c => c.store_id === storeId));
+      return;
+    }
+    const { data } = await supabase.from('clients').select('id, name').eq('store_id', storeId);
     if (data) setClients(data as any);
   };
 
   const fetchEquipments = async (clientId: string) => {
     if (isDemo) {
-      const mockEq = [
-        { id: '1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45', serial_number: '123', status: 'ativo' },
-        { id: '2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi', serial_number: '456', status: 'ativo' },
-        { id: '3', client_id: '2', type: 'Grelhador', brand: 'GrelhaMox', model: 'G500', serial_number: '789', status: 'ativo' },
-      ];
-      setEquipments(mockEq.filter(e => e.client_id === clientId) as any);
+      setEquipments(MOCK_EQUIPMENTS.filter(e => e.client_id === clientId));
       return;
     }
     const { data } = await supabase.from('equipments').select('*').eq('client_id', clientId);
@@ -67,8 +97,8 @@ const NewServiceOrder: React.FC = () => {
     setLoading(true);
 
     try {
-      if (!formData.client_id || !formData.description) {
-        throw new Error("Preencha os campos obrigatórios.");
+      if (!formData.store_id || !formData.client_id || !formData.description) {
+        throw new Error("Preencha os campos obrigatórios (Loja, Cliente, Descrição).");
       }
 
       if (isDemo) {
@@ -84,6 +114,7 @@ const NewServiceOrder: React.FC = () => {
 
       const { error } = await supabase.from('service_orders').insert({
         code,
+        store_id: formData.store_id, // Save store_id
         client_id: formData.client_id,
         equipment_id: formData.equipment_id || null,
         type: formData.type,
@@ -119,6 +150,23 @@ const NewServiceOrder: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
           
+          {/* Loja */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Loja *</label>
+            <select
+              name="store_id"
+              value={formData.store_id}
+              onChange={handleChange}
+              required
+              className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
+            >
+              <option value="">Selecione uma loja</option>
+              {stores.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Cliente */}
             <div>
@@ -128,7 +176,8 @@ const NewServiceOrder: React.FC = () => {
                 value={formData.client_id}
                 onChange={handleChange}
                 required
-                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
+                disabled={!formData.store_id}
+                className="w-full border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5 disabled:bg-gray-100 disabled:text-gray-400"
               >
                 <option value="">Selecione um cliente</option>
                 {clients.map(c => (
