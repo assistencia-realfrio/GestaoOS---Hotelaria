@@ -18,8 +18,8 @@ const MOCK_CATALOG: PartCatalogItem[] = [
 ];
 
 const MOCK_STORES: Store[] = [
-  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
-  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
+  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', short_code: 'CR', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
+  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', short_code: 'PM', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
 ];
 
 const ServiceOrderDetail: React.FC = () => {
@@ -88,9 +88,9 @@ const ServiceOrderDetail: React.FC = () => {
       await new Promise(r => setTimeout(r, 500));
       setOs({
         id: id || '1',
-        code: 'OS-2024-055',
+        code: 'CR-20241026-001', // New code format
         client_id: 'cli-1',
-        description: 'Máquina de gelo não está a fazer cubos. Cliente reporta barulho estranho.',
+        description: 'Máquina de gelo não está a fazer cubos, faz barulho estranho.',
         type: 'avaria' as any,
         status: OSStatus.ATRIBUIDA,
         priority: 'alta',
@@ -130,7 +130,7 @@ const ServiceOrderDetail: React.FC = () => {
       // 1. Fetch OS Header
       const { data: osData, error: osError } = await supabase
         .from('service_orders')
-        .select(`*, client:clients(*), equipment:equipments(*), store:stores(name)`) // Fetch store details
+        .select(`*, client:clients(*), equipment:equipments(*), store:stores(name, short_code)`) // Fetch store details, include short_code
         .eq('id', id)
         .single();
 

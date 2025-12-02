@@ -23,6 +23,7 @@ export enum OSType {
 export interface Store {
   id: string;
   name: string;
+  short_code: string; // Nova propriedade para o código curto da loja
   address?: string;
   phone?: string;
   email?: string;

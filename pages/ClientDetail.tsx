@@ -6,8 +6,8 @@ import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store } from '../typ
 
 // Mock Data
 const MOCK_STORES: Store[] = [
-  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
-  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
+  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', short_code: 'CR', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
+  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', short_code: 'PM', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
 ];
 
 const MOCK_CLIENT: Client = { 
@@ -21,7 +21,7 @@ const MOCK_EQUIPMENTS: Equipment[] = [
 ];
 
 const MOCK_HISTORY: ServiceOrder[] = [
-  { id: '1', code: 'OS-2023-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.FINALIZADA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15', store_id: MOCK_STORES[0].id },
+  { id: '1', code: 'CR-20230915-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.FINALIZADA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15', store_id: MOCK_STORES[0].id },
 ];
 
 const ClientDetail: React.FC = () => {
@@ -45,7 +45,7 @@ const ClientDetail: React.FC = () => {
 
       try {
         // Fetch Client
-        const { data: clientData } = await supabase.from('clients').select(`*, store:stores(name)`).eq('id', id).single();
+        const { data: clientData } = await supabase.from('clients').select(`*, store:stores(name, short_code)`).eq('id', id).single();
         if (clientData) setClient(clientData);
 
         // Fetch Equipment

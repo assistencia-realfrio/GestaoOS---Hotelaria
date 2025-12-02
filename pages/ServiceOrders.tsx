@@ -6,8 +6,8 @@ import { supabase } from '../supabaseClient';
 
 // Mock data for demo mode (consistent with Clients.tsx)
 const MOCK_STORES: Store[] = [
-  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
-  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
+  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', short_code: 'CR', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
+  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', short_code: 'PM', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
 ];
 
 const MOCK_CLIENTS: Client[] = [
@@ -26,19 +26,19 @@ const MOCK_EQUIPMENTS: Equipment[] = [
 
 const mockOSList: ServiceOrder[] = [
   { 
-    id: '1', code: 'OS-001', client_id: '1', equipment_id: 'eq-1', type: OSType.AVARIA, status: OSStatus.ATRIBUIDA, description: 'Máquina de Gelo não produz cubos, faz barulho estranho.', priority: 'alta', created_at: '2023-10-10',
+    id: '1', code: 'CR-20231010-001', client_id: '1', equipment_id: 'eq-1', type: OSType.AVARIA, status: OSStatus.ATRIBUIDA, description: 'Máquina de Gelo não produz cubos, faz barulho estranho.', priority: 'alta', created_at: '2023-10-10',
     client: MOCK_CLIENTS.find(c => c.id === '1'),
     equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-1'),
     store_id: MOCK_STORES[0].id, store: MOCK_STORES[0]
   },
   { 
-    id: '2', code: 'OS-002', client_id: '2', equipment_id: 'eq-3', type: OSType.MANUTENCAO, status: OSStatus.FINALIZADA, description: 'Manutenção preventiva e limpeza geral do sistema de exaustão.', priority: 'media', created_at: '2023-10-09',
+    id: '2', code: 'PM-20231009-001', client_id: '2', equipment_id: 'eq-3', type: OSType.MANUTENCAO, status: OSStatus.FINALIZADA, description: 'Manutenção preventiva e limpeza geral do sistema de exaustão.', priority: 'media', created_at: '2023-10-09',
     client: MOCK_CLIENTS.find(c => c.id === '2'),
     equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-3'),
     store_id: MOCK_STORES[1].id, store: MOCK_STORES[1]
   },
   { 
-    id: '3', code: 'OS-003', client_id: '3', equipment_id: 'eq-4', type: OSType.INSTALACAO, status: OSStatus.ABERTA, description: 'Instalação de novo forno industrial na cozinha principal.', priority: 'media', created_at: '2023-10-11',
+    id: '3', code: 'CR-20231011-001', client_id: '3', equipment_id: 'eq-4', type: OSType.INSTALACAO, status: OSStatus.ABERTA, description: 'Instalação de novo forno industrial na cozinha principal.', priority: 'media', created_at: '2023-10-11',
     client: MOCK_CLIENTS.find(c => c.id === '3'),
     equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-4'),
     store_id: MOCK_STORES[0].id, store: MOCK_STORES[0]
@@ -80,7 +80,7 @@ const ServiceOrders: React.FC = () => {
           *,
           client:clients(*), // Fetch client details
           equipment:equipments(*), // Fetch equipment details
-          store:stores(name) // Fetch store details
+          store:stores(name, short_code) // Fetch store details, include short_code
         `)
         .order('created_at', { ascending: false });
       

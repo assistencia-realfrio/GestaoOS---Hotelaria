@@ -6,8 +6,8 @@ import { Client, Store } from '../types';
 
 // Mock data for demo mode
 const MOCK_STORES: Store[] = [
-  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
-  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
+  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', short_code: 'CR', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
+  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', short_code: 'PM', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
 ];
 
 const MOCK_CLIENTS: Client[] = [
@@ -50,7 +50,7 @@ const Clients: React.FC = () => {
       // Fetch Clients
       let query = supabase
         .from('clients')
-        .select(`*, store:stores(name)`) // Join with stores table
+        .select(`*, store:stores(name, short_code)`) // Join with stores table, include short_code
         .order('name');
       
       if (selectedStoreId) {
