@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom'; // Import useNavigate
+import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText, Edit } from 'lucide-react'; // Import Edit icon
 import { supabase } from '../supabaseClient';
-import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store, ClientType } from '../types'; // Import ClientType
+import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store, ClientType } from '../types';
 
 // Mock Data
 const MOCK_STORES: Store[] = [
@@ -29,6 +29,7 @@ const MOCK_HISTORY: ServiceOrder[] = [
 
 const ClientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate(); // Initialize useNavigate
   const [client, setClient] = useState<Client | null>(null);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [history, setHistory] = useState<ServiceOrder[]>([]);
@@ -118,6 +119,15 @@ const ClientDetail: React.FC = () => {
                <p className="text-sm text-gray-700">{client.notes || 'Sem notas registadas.'}</p>
              </div>
           </div>
+        </div>
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+          <button
+            onClick={() => navigate(`/clients/${client.id}/edit`)}
+            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition-colors"
+          >
+            <Edit size={18} className="mr-2" />
+            Editar Cliente
+          </button>
         </div>
       </div>
 
