@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History } from 'lucide-react';
+import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store } from '../types';
 
@@ -12,7 +12,8 @@ const MOCK_STORES: Store[] = [
 
 const MOCK_CLIENT: Client = { 
   id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@baiaazul.pt', contact_person: 'Sr. Silva', notes: 'Cliente preferencial. Acesso pelas traseiras.',
-  store_id: MOCK_STORES[0].id, store: MOCK_STORES[0]
+  store_id: MOCK_STORES[0].id, store: MOCK_STORES[0],
+  billing_name: 'Hotel Baía Azul, Lda.' // Added for demo
 };
 
 const MOCK_EQUIPMENTS: Equipment[] = [
@@ -92,6 +93,12 @@ const ClientDetail: React.FC = () => {
                <User className="w-5 h-5 mr-3 text-gray-400" />
                <span className="font-medium text-gray-900">{client.contact_person}</span>
              </div>
+             {client.billing_name && ( // Display billing name if available
+               <div className="flex items-center text-gray-600">
+                 <ReceiptText className="w-5 h-5 mr-3 text-gray-400" />
+                 <span className="font-medium text-gray-900">{client.billing_name}</span>
+               </div>
+             )}
              <div className="flex items-center text-gray-600">
                <Phone className="w-5 h-5 mr-3 text-gray-400" />
                <span>{client.phone}</span>
