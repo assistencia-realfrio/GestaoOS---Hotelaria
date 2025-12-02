@@ -56,8 +56,9 @@ const NewClient: React.FC = () => {
     setLoading(true);
 
     try {
-      if (!formData.name || !formData.address || !formData.phone || !formData.email || !formData.contact_person || !formData.store_id) {
-        throw new Error("Por favor, preencha todos os campos obrigatórios.");
+      // Only 'name' and 'store_id' are now strictly required
+      if (!formData.name || !formData.store_id) {
+        throw new Error("Por favor, preencha os campos obrigatórios: Nome do Cliente e Loja Associada.");
       }
 
       if (isDemo) {
@@ -70,14 +71,14 @@ const NewClient: React.FC = () => {
 
       const { error } = await supabase.from('clients').insert({
         name: formData.name,
-        address: formData.address,
-        phone: formData.phone,
-        email: formData.email,
-        contact_person: formData.contact_person,
-        notes: formData.notes,
+        address: formData.address || null, // Now optional
+        phone: formData.phone || null,     // Now optional
+        email: formData.email || null,     // Now optional
+        contact_person: formData.contact_person || null, // Now optional
+        notes: formData.notes || null,
         store_id: formData.store_id,
         type: 'Outro', // Set a default type if not provided by the user
-        billing_name: formData.billing_name || null, // Save billing_name, or null if empty
+        billing_name: formData.billing_name || null,
       });
 
       if (error) throw error;
@@ -157,7 +158,7 @@ const NewClient: React.FC = () => {
 
           {/* Endereço */}
           <div>
-            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Morada *</label>
+            <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Morada (Opcional)</label>
             <div className="relative">
               <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
@@ -166,7 +167,7 @@ const NewClient: React.FC = () => {
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                required
+                // Removed 'required'
                 className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                 placeholder="Ex: Rua da Liberdade, 10, 2500-000 Caldas da Rainha"
               />
@@ -176,7 +177,7 @@ const NewClient: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Telefone */}
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone *</label>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone (Opcional)</label>
               <div className="relative">
                 <Phone className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
@@ -185,7 +186,7 @@ const NewClient: React.FC = () => {
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  required
+                  // Removed 'required'
                   className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                   placeholder="Ex: 912345678"
                 />
@@ -194,7 +195,7 @@ const NewClient: React.FC = () => {
 
             {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email (Opcional)</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                 <input
@@ -203,7 +204,7 @@ const NewClient: React.FC = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  required
+                  // Removed 'required'
                   className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                   placeholder="Ex: geral@hotelcentral.pt"
                 />
@@ -213,7 +214,7 @@ const NewClient: React.FC = () => {
 
           {/* Pessoa de Contacto */}
           <div>
-            <label htmlFor="contact_person" className="block text-sm font-medium text-gray-700 mb-1">Pessoa de Contacto *</label>
+            <label htmlFor="contact_person" className="block text-sm font-medium text-gray-700 mb-1">Pessoa de Contacto (Opcional)</label>
             <div className="relative">
               <User className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
               <input
@@ -222,7 +223,7 @@ const NewClient: React.FC = () => {
                 name="contact_person"
                 value={formData.contact_person}
                 onChange={handleChange}
-                required
+                // Removed 'required'
                 className="w-full pl-10 border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border p-2.5"
                 placeholder="Ex: João Silva"
               />
