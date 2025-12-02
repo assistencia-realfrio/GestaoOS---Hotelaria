@@ -21,7 +21,9 @@ const MOCK_EQUIPMENTS: Equipment[] = [
 ];
 
 const MOCK_HISTORY: ServiceOrder[] = [
-  { id: '1', code: 'CR-20230915-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.FINALIZADA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15', store_id: MOCK_STORES[0].id },
+  { id: '1', code: 'CR-20230915-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.CONCLUIDA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15', store_id: MOCK_STORES[0].id },
+  { id: '2', code: 'CR-20230910-002', client_id: '1', type: OSType.MANUTENCAO, status: OSStatus.INICIADA, description: 'Manutenção preventiva', priority: 'media', created_at: '2023-09-10', store_id: MOCK_STORES[0].id },
+  { id: '3', code: 'CR-20230905-003', client_id: '1', type: OSType.INSTALACAO, status: OSStatus.POR_INICIAR, description: 'Instalação de novo equipamento', priority: 'baixa', created_at: '2023-09-05', store_id: MOCK_STORES[0].id },
 ];
 
 const ClientDetail: React.FC = () => {
@@ -184,8 +186,13 @@ const ClientDetail: React.FC = () => {
                         <td className="px-4 py-3 text-sm font-medium text-blue-600">{os.code}</td>
                         <td className="px-4 py-3 text-sm text-gray-500 capitalize">{os.type}</td>
                         <td className="px-4 py-3">
-                           <span className={`px-2 text-xs leading-5 font-semibold rounded-full ${os.status === 'finalizada' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                             {os.status}
+                           <span className={`px-2 text-xs leading-5 font-semibold rounded-full 
+                             ${os.status === OSStatus.CONCLUIDA ? 'bg-green-100 text-green-800' : 
+                               os.status === OSStatus.INICIADA ? 'bg-yellow-100 text-yellow-800' : 
+                               os.status === OSStatus.POR_INICIAR ? 'bg-blue-100 text-blue-800' :
+                               os.status === OSStatus.CANCELADA ? 'bg-red-100 text-red-800' :
+                               'bg-gray-100 text-gray-800'}`}>
+                             {os.status.replace('_', ' ')}
                            </span>
                         </td>
                         <td className="px-4 py-3 text-right text-sm">

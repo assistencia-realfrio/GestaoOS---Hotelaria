@@ -5,9 +5,11 @@ import { ServiceOrder, OSStatus, OSType } from '../types';
 
 // Mock Data for demonstration
 const mockOS: ServiceOrder[] = [
-  { id: '1', code: 'OS-2023-001', client_id: 'c1', type: OSType.AVARIA, status: OSStatus.ATRIBUIDA, description: 'Forno Industrial não aquece', priority: 'alta', created_at: new Date().toISOString() },
-  { id: '2', code: 'OS-2023-002', client_id: 'c2', type: OSType.MANUTENCAO, status: OSStatus.EM_EXECUCAO, description: 'Revisão semestral Ar Condicionado', priority: 'media', created_at: new Date().toISOString() },
-  { id: '3', code: 'OS-2023-003', client_id: 'c3', type: OSType.INSTALACAO, status: OSStatus.ABERTA, description: 'Instalação Máquina Lavar Louça', priority: 'media', created_at: new Date().toISOString() },
+  { id: '1', code: 'CR-2023-001', client_id: 'c1', type: OSType.AVARIA, status: OSStatus.ATRIBUIDA, description: 'Forno Industrial não aquece', priority: 'alta', created_at: new Date().toISOString() },
+  { id: '2', code: 'PM-2023-002', client_id: 'c2', type: OSType.MANUTENCAO, status: OSStatus.INICIADA, description: 'Revisão semestral Ar Condicionado', priority: 'media', created_at: new Date().toISOString() },
+  { id: '3', code: 'CR-2023-003', client_id: 'c3', type: OSType.INSTALACAO, status: OSStatus.POR_INICIAR, description: 'Instalação Máquina Lavar Louça', priority: 'media', created_at: new Date().toISOString() },
+  { id: '4', code: 'PM-2023-004', client_id: 'c4', type: OSType.AVARIA, status: OSStatus.AGUARDA_PECAS, description: 'Frigorífico com fuga de gás', priority: 'alta', created_at: new Date().toISOString() },
+  { id: '5', code: 'CR-2023-005', client_id: 'c5', type: OSType.REVISAO, status: OSStatus.CONCLUIDA, description: 'Revisão anual de equipamentos de cozinha', priority: 'baixa', created_at: new Date().toISOString() },
 ];
 
 const StatCard = ({ title, value, icon: Icon, color }: any) => (
@@ -31,10 +33,10 @@ const Dashboard: React.FC = () => {
       
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="OS em Aberto" value="12" icon={ClipboardList} color="bg-blue-500" />
+        <StatCard title="OS por Iniciar" value="12" icon={ClipboardList} color="bg-blue-500" />
         <StatCard title="Em Execução" value="3" icon={Clock} color="bg-yellow-500" />
         <StatCard title="Alta Prioridade" value="5" icon={AlertTriangle} color="bg-red-500" />
-        <StatCard title="Finalizadas Hoje" value="8" icon={CheckCircle} color="bg-green-500" />
+        <StatCard title="Concluídas Hoje" value="8" icon={CheckCircle} color="bg-green-500" />
       </div>
 
       {/* Recent OS Table */}
@@ -61,8 +63,10 @@ const Dashboard: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{os.type}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                      ${os.status === OSStatus.EM_EXECUCAO ? 'bg-yellow-100 text-yellow-800' : 
-                        os.status === OSStatus.ABERTA ? 'bg-blue-100 text-blue-800' : 
+                      ${os.status === OSStatus.INICIADA ? 'bg-yellow-100 text-yellow-800' : 
+                        os.status === OSStatus.POR_INICIAR ? 'bg-blue-100 text-blue-800' : 
+                        os.status === OSStatus.CONCLUIDA ? 'bg-green-100 text-green-800' :
+                        os.status === OSStatus.AGUARDA_PECAS ? 'bg-orange-100 text-orange-800' :
                         'bg-gray-100 text-gray-800'}`}>
                       {os.status.replace('_', ' ')}
                     </span>

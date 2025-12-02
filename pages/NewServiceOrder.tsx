@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft, Calendar, AlertTriangle, FileText } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { Client, Equipment, OSType, Store } from '../types';
+import { Client, Equipment, OSType, Store, OSStatus } from '../types';
 
 const NewServiceOrder: React.FC = () => {
   const navigate = useNavigate();
@@ -123,7 +123,7 @@ const NewServiceOrder: React.FC = () => {
         type: formData.type,
         priority: formData.priority,
         description: formData.description,
-        status: 'aberta',
+        status: OSStatus.POR_INICIAR, // Default status for new OS
         scheduled_date: formData.scheduled_date
       });
 

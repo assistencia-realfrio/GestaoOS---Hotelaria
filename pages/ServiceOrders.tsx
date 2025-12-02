@@ -32,15 +32,27 @@ const mockOSList: ServiceOrder[] = [
     store_id: MOCK_STORES[0].id, store: MOCK_STORES[0]
   },
   { 
-    id: '2', code: 'PM-20231009-001', client_id: '2', equipment_id: 'eq-3', type: OSType.MANUTENCAO, status: OSStatus.FINALIZADA, description: 'Manutenção preventiva e limpeza geral do sistema de exaustão.', priority: 'media', created_at: '2023-10-09',
+    id: '2', code: 'PM-20231009-001', client_id: '2', equipment_id: 'eq-3', type: OSType.MANUTENCAO, status: OSStatus.CONCLUIDA, description: 'Manutenção preventiva e limpeza geral do sistema de exaustão.', priority: 'media', created_at: '2023-10-09',
     client: MOCK_CLIENTS.find(c => c.id === '2'),
     equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-3'),
     store_id: MOCK_STORES[1].id, store: MOCK_STORES[1]
   },
   { 
-    id: '3', code: 'CR-20231011-001', client_id: '3', equipment_id: 'eq-4', type: OSType.INSTALACAO, status: OSStatus.ABERTA, description: 'Instalação de novo forno industrial na cozinha principal.', priority: 'media', created_at: '2023-10-11',
+    id: '3', code: 'CR-20231011-001', client_id: '3', equipment_id: 'eq-4', type: OSType.INSTALACAO, status: OSStatus.POR_INICIAR, description: 'Instalação de novo forno industrial na cozinha principal.', priority: 'media', created_at: '2023-10-11',
     client: MOCK_CLIENTS.find(c => c.id === '3'),
     equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-4'),
+    store_id: MOCK_STORES[0].id, store: MOCK_STORES[0]
+  },
+  { 
+    id: '4', code: 'PM-20231012-001', client_id: '4', equipment_id: null, type: OSType.AVARIA, status: OSStatus.AGUARDA_PECAS, description: 'Máquina de lavar louça com problema na bomba.', priority: 'alta', created_at: '2023-10-12',
+    client: MOCK_CLIENTS.find(c => c.id === '4'),
+    equipment: null,
+    store_id: MOCK_STORES[1].id, store: MOCK_STORES[1]
+  },
+  { 
+    id: '5', code: 'CR-20231013-001', client_id: '1', equipment_id: 'eq-2', type: OSType.AVARIA, status: OSStatus.PARA_ORCAMENTO, description: 'Forno Rational não liga, necessita de orçamento.', priority: 'media', created_at: '2023-10-13',
+    client: MOCK_CLIENTS.find(c => c.id === '1'),
+    equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-2'),
     store_id: MOCK_STORES[0].id, store: MOCK_STORES[0]
   },
 ];
@@ -149,8 +161,14 @@ const ServiceOrders: React.FC = () => {
                         <span className="bg-gray-100 text-gray-700 text-xs font-semibold px-2.5 py-0.5 rounded">{os.store.name}</span>
                       )}
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                        ${os.status === OSStatus.FINALIZADA ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {os.status}
+                        ${os.status === OSStatus.CONCLUIDA ? 'bg-green-100 text-green-800' : 
+                         os.status === OSStatus.INICIADA ? 'bg-yellow-100 text-yellow-800' : 
+                         os.status === OSStatus.POR_INICIAR ? 'bg-blue-100 text-blue-800' :
+                         os.status === OSStatus.AGUARDA_PECAS ? 'bg-orange-100 text-orange-800' :
+                         os.status === OSStatus.PARA_ORCAMENTO ? 'bg-purple-100 text-purple-800' :
+                         os.status === OSStatus.CANCELADA ? 'bg-red-100 text-red-800' :
+                         'bg-gray-100 text-gray-800'}`}>
+                        {os.status.replace('_', ' ')}
                       </span>
                     </div>
                   </div>

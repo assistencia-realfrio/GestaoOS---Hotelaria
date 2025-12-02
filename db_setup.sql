@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS service_orders (
   equipment_id UUID REFERENCES equipments(id) ON DELETE SET NULL,
   technician_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   type TEXT NOT NULL,
-  status TEXT DEFAULT 'aberta',
+  status TEXT DEFAULT 'por_iniciar', -- Estado inicial padrão
   description TEXT NOT NULL,
   priority TEXT DEFAULT 'media',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

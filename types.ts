@@ -5,12 +5,17 @@ export enum UserRole {
 }
 
 export enum OSStatus {
-  ABERTA = 'aberta',
+  POR_INICIAR = 'por_iniciar',
   ATRIBUIDA = 'atribuida',
-  EM_EXECUCAO = 'em_execucao',
+  INICIADA = 'iniciada',
   PAUSA = 'pausa',
-  FINALIZADA = 'finalizada',
-  FATURADA = 'faturada'
+  PARA_ORCAMENTO = 'para_orcamento',
+  ORCAMENTO_ENVIADO = 'orcamento_enviado',
+  AGUARDA_PECAS = 'aguarda_pecas',
+  PECAS_RECEBIDAS = 'pecas_recebidas',
+  CONCLUIDA = 'concluida',
+  FATURADA = 'faturada',
+  CANCELADA = 'cancelada'
 }
 
 export enum OSType {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Play, Pause, CheckSquare, Camera, PenTool, Save, Wand2, Plus, Trash2, X, Package, FileCheck, RotateCcw, DollarSign, Clock, Calendar, Timer, History, Lock, FileText, Download, AlertTriangle, ArrowLeft } from 'lucide-react';
+import { Play, Pause, CheckSquare, Camera, PenTool, Save, Wand2, Plus, Trash2, X, Package, FileCheck, RotateCcw, DollarSign, Clock, Calendar, Timer, History, Lock, FileText, Download, AlertTriangle, ArrowLeft, Ban } from 'lucide-react';
 import SignatureCanvas from '../components/SignatureCanvas';
 import { OSStatus, ServiceOrder, PartUsed, PartCatalogItem, OSPhoto, TimeEntry, Store } from '../types';
 import { generateOSReportSummary } from '../services/geminiService';
@@ -92,7 +92,7 @@ const ServiceOrderDetail: React.FC = () => {
         client_id: 'cli-1',
         description: 'Máquina de gelo não está a fazer cubos, faz barulho estranho.',
         type: 'avaria' as any,
-        status: OSStatus.ATRIBUIDA,
+        status: OSStatus.ATRIBUIDA, // Default to ATRIBUIDA for demo
         priority: 'alta',
         created_at: new Date(Date.now() - 86400000).toISOString(),
         scheduled_date: new Date().toISOString().split('T')[0],
@@ -169,25 +169,36 @@ const ServiceOrderDetail: React.FC = () => {
   if (!os) return <div className="p-8 text-center text-red-500">Ordem de Serviço não encontrada.</div>;
 
   // --- Helpers ---
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: OSStatus) => {
     switch (status) {
-      case OSStatus.ABERTA: return 'Aberta';
+      case OSStatus.POR_INICIAR: return 'Por Iniciar';
       case OSStatus.ATRIBUIDA: return 'Atribuída';
-      case OSStatus.EM_EXECUCAO: return 'Em Execução';
+      case OSStatus.INICIADA: return 'Iniciada';
       case OSStatus.PAUSA: return 'Pausa';
-      case OSStatus.FINALIZADA: return 'Finalizada';
+      case OSStatus.PARA_ORCAMENTO: return 'Para Orçamento';
+      case OSStatus.ORCAMENTO_ENVIADO: return 'Orçamento Enviado';
+      case OSStatus.AGUARDA_PECAS: return 'Aguarda Peças';
+      case OSStatus.PECAS_RECEBIDAS: return 'Peças Recebidas';
+      case OSStatus.CONCLUIDA: return 'Concluída';
       case OSStatus.FATURADA: return 'Faturada';
+      case OSStatus.CANCELADA: return 'Cancelada';
       default: return status;
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: OSStatus) => {
     switch (status) {
-      case OSStatus.EM_EXECUCAO: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case OSStatus.FINALIZADA: return 'bg-green-100 text-green-800 border-green-200';
-      case OSStatus.FATURADA: return 'bg-purple-100 text-purple-800 border-purple-200';
+      case OSStatus.POR_INICIAR: return 'bg-blue-100 text-blue-800 border-blue-200';
+      case OSStatus.ATRIBUIDA: return 'bg-indigo-100 text-indigo-800 border-indigo-200';
+      case OSStatus.INICIADA: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case OSStatus.PAUSA: return 'bg-orange-100 text-orange-800 border-orange-200';
-      case OSStatus.ATRIBUIDA: return 'bg-blue-100 text-blue-800 border-blue-200';
+      case OSStatus.PARA_ORCAMENTO: return 'bg-purple-100 text-purple-800 border-purple-200';
+      case OSStatus.ORCAMENTO_ENVIADO: return 'bg-pink-100 text-pink-800 border-pink-200';
+      case OSStatus.AGUARDA_PECAS: return 'bg-red-100 text-red-800 border-red-200';
+      case OSStatus.PECAS_RECEBIDAS: return 'bg-teal-100 text-teal-800 border-teal-200';
+      case OSStatus.CONCLUIDA: return 'bg-green-100 text-green-800 border-green-200';
+      case OSStatus.FATURADA: return 'bg-gray-200 text-gray-800 border-gray-300'; // Faturada pode ser mais neutra
+      case OSStatus.CANCELADA: return 'bg-gray-300 text-gray-700 border-gray-400';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -215,7 +226,7 @@ const ServiceOrderDetail: React.FC = () => {
     if (isDemo) {
       setActiveTimerEntry(newEntry);
       setTimeEntries([newEntry, ...timeEntries]);
-      handleUpdateStatus(OSStatus.EM_EXECUCAO); // Auto update status
+      handleUpdateStatus(OSStatus.INICIADA); // Auto update status
       return;
     }
 
@@ -229,7 +240,7 @@ const ServiceOrderDetail: React.FC = () => {
       if (error) throw error;
       setActiveTimerEntry(data);
       setTimeEntries([data, ...timeEntries]);
-      handleUpdateStatus(OSStatus.EM_EXECUCAO);
+      handleUpdateStatus(OSStatus.INICIADA);
     } catch (e) {
       console.error("Erro ao iniciar timer:", e);
       alert("Erro ao iniciar contagem de tempo.");
@@ -502,8 +513,8 @@ const ServiceOrderDetail: React.FC = () => {
     const now = new Date().toISOString();
     
     const updates: Partial<ServiceOrder> = { status: newStatus };
-    if (newStatus === OSStatus.EM_EXECUCAO && !os.start_time) updates.start_time = now;
-    if (newStatus === OSStatus.FINALIZADA) {
+    if (newStatus === OSStatus.INICIADA && !os.start_time) updates.start_time = now;
+    if (newStatus === OSStatus.CONCLUIDA) {
       updates.end_time = now;
       updates.resolution_notes = notes;
       updates.internal_notes = internalNotes; // Save internal notes on finish
@@ -566,18 +577,24 @@ const ServiceOrderDetail: React.FC = () => {
     setActionLoading(false);
   };
 
-  const handleStartOS = () => handleUpdateStatus(OSStatus.EM_EXECUCAO);
+  const handleStartOS = () => handleUpdateStatus(OSStatus.INICIADA);
   const handlePauseOS = () => handleUpdateStatus(OSStatus.PAUSA);
   
   const handleReopenOS = () => {
     if (confirm("Tem a certeza que deseja reabrir esta Ordem de Serviço?")) {
-      handleUpdateStatus(OSStatus.EM_EXECUCAO);
+      handleUpdateStatus(OSStatus.INICIADA);
     }
   };
 
   const handleInvoiceOS = () => {
     if (confirm("Marcar esta OS como Faturada? Esta ação é irreversível pelo técnico.")) {
       handleUpdateStatus(OSStatus.FATURADA);
+    }
+  };
+
+  const handleCancelOS = () => {
+    if (confirm("Tem a certeza que deseja CANCELAR esta Ordem de Serviço? Esta ação não pode ser desfeita.")) {
+      handleUpdateStatus(OSStatus.CANCELADA);
     }
   };
 
@@ -591,8 +608,8 @@ const ServiceOrderDetail: React.FC = () => {
     if (!signature && !isDemo) {
       if(!confirm("Não recolheu a assinatura do cliente. Deseja finalizar mesmo assim?")) return;
     }
-    await handleUpdateStatus(OSStatus.FINALIZADA);
-    alert('Ordem de Serviço Finalizada com sucesso!');
+    await handleUpdateStatus(OSStatus.CONCLUIDA);
+    alert('Ordem de Serviço Concluída com sucesso!');
   };
 
   // --- Parts Logic ---
@@ -699,9 +716,9 @@ const ServiceOrderDetail: React.FC = () => {
     setIsGenerating(false);
   };
 
-  const isReadOnly = os.status === OSStatus.FINALIZADA || os.status === OSStatus.FATURADA;
+  const isReadOnly = os.status === OSStatus.CONCLUIDA || os.status === OSStatus.FATURADA || os.status === OSStatus.CANCELADA;
 
-  // Validation Check - Modified to remove scheduled_date check
+  // Validation Check
   const isFormValid = notes.trim().length > 0;
 
   return (
@@ -763,45 +780,40 @@ const ServiceOrderDetail: React.FC = () => {
           
           <div className="flex gap-2 w-full md:w-auto flex-wrap justify-end">
             
-            {(os.status === OSStatus.ABERTA || os.status === OSStatus.ATRIBUIDA) && (
+            {/* Start OS Button */}
+            {(os.status === OSStatus.POR_INICIAR || os.status === OSStatus.ATRIBUIDA || os.status === OSStatus.PAUSA) && !isReadOnly && (
               <button 
                 onClick={handleStartOS}
                 disabled={actionLoading}
                 className="flex-1 md:flex-none flex items-center justify-center bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 shadow-sm transition-colors disabled:opacity-50"
               >
-                {actionLoading ? 'A processar...' : <><Play size={18} className="mr-2" /> Iniciar OS</>}
+                {actionLoading ? 'A processar...' : <><Play size={18} className="mr-2" /> {os.status === OSStatus.PAUSA ? 'Retomar OS' : 'Iniciar OS'}</>}
               </button>
             )}
 
-            {os.status === OSStatus.PAUSA && (
+            {/* Pause OS Button */}
+            {os.status === OSStatus.INICIADA && !isReadOnly && (
               <button 
-                onClick={handleStartOS}
+                onClick={handlePauseOS}
                 disabled={actionLoading}
-                className="flex-1 md:flex-none flex items-center justify-center bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 shadow-sm transition-colors disabled:opacity-50"
+                className="flex-1 md:flex-none flex items-center justify-center bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
               >
-                 {actionLoading ? 'A processar...' : <><Play size={18} className="mr-2" /> Retomar OS</>}
+                <Pause size={18} className="mr-2" /> Pausa
               </button>
             )}
 
-            {os.status === OSStatus.EM_EXECUCAO && (
-              <>
-                <button 
-                  onClick={handlePauseOS}
-                  disabled={actionLoading}
-                  className="flex-1 md:flex-none flex items-center justify-center bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
-                >
-                  <Pause size={18} className="mr-2" /> Pausa
-                </button>
-                <button 
-                  onClick={() => setActiveTab('finalizar')}
-                  className="flex-1 md:flex-none flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  <CheckSquare size={18} className="mr-2" /> Finalizar
-                </button>
-              </>
+            {/* Finish OS Button */}
+            {(os.status === OSStatus.INICIADA || os.status === OSStatus.PAUSA || os.status === OSStatus.ATRIBUIDA) && !isReadOnly && (
+              <button 
+                onClick={() => setActiveTab('finalizar')}
+                className="flex-1 md:flex-none flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+              >
+                <CheckSquare size={18} className="mr-2" /> Finalizar
+              </button>
             )}
 
-            {(os.status === OSStatus.FINALIZADA || os.status === OSStatus.FATURADA) && (
+            {/* Download PDF Button */}
+            {(os.status === OSStatus.CONCLUIDA || os.status === OSStatus.FATURADA) && (
               <button 
                 onClick={handleDownloadPDF}
                 className="flex-1 md:flex-none flex items-center justify-center bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
@@ -811,28 +823,48 @@ const ServiceOrderDetail: React.FC = () => {
               </button>
             )}
 
-            {os.status === OSStatus.FINALIZADA && (
-              <>
-                <button 
-                  onClick={handleReopenOS}
-                  disabled={actionLoading}
-                  className="flex-1 md:flex-none flex items-center justify-center border border-gray-300 text-gray-700 bg-white px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-                >
-                  <RotateCcw size={18} className="mr-2" /> Reabrir
-                </button>
-                <button 
-                  onClick={handleInvoiceOS}
-                  disabled={actionLoading}
-                  className="flex-1 md:flex-none flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
-                >
-                  <DollarSign size={18} className="mr-2" /> Faturar
-                </button>
-              </>
+            {/* Reopen OS Button */}
+            {os.status === OSStatus.CONCLUIDA && (
+              <button 
+                onClick={handleReopenOS}
+                disabled={actionLoading}
+                className="flex-1 md:flex-none flex items-center justify-center border border-gray-300 text-gray-700 bg-white px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                <RotateCcw size={18} className="mr-2" /> Reabrir
+              </button>
             )}
 
+            {/* Invoice OS Button */}
+            {os.status === OSStatus.CONCLUIDA && (
+              <button 
+                onClick={handleInvoiceOS}
+                disabled={actionLoading}
+                className="flex-1 md:flex-none flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
+              >
+                <DollarSign size={18} className="mr-2" /> Faturar
+              </button>
+            )}
+
+            {/* Cancel OS Button */}
+            {!isReadOnly && os.status !== OSStatus.CANCELADA && (
+              <button 
+                onClick={handleCancelOS}
+                disabled={actionLoading}
+                className="flex-1 md:flex-none flex items-center justify-center bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                <Ban size={18} className="mr-2" /> Cancelar
+              </button>
+            )}
+
+            {/* Faturada / Cancelada Display */}
             {os.status === OSStatus.FATURADA && (
-               <div className="flex items-center text-purple-700 font-bold px-4 py-2 bg-purple-50 rounded-lg border border-purple-200">
+               <div className="flex items-center text-gray-700 font-bold px-4 py-2 bg-gray-100 rounded-lg border border-gray-200">
                  <FileCheck size={18} className="mr-2" /> Faturada
+               </div>
+            )}
+            {os.status === OSStatus.CANCELADA && (
+               <div className="flex items-center text-red-700 font-bold px-4 py-2 bg-red-50 rounded-lg border border-red-200">
+                 <Ban size={18} className="mr-2" /> Cancelada
                </div>
             )}
           </div>
@@ -1262,15 +1294,21 @@ const ServiceOrderDetail: React.FC = () => {
               </button>
             )}
             
-            {os.status === OSStatus.FINALIZADA && (
+            {os.status === OSStatus.CONCLUIDA && (
               <div className="text-center p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 font-medium">
-                Esta Ordem de Serviço foi finalizada. Pode agora emitir a fatura.
+                Esta Ordem de Serviço foi concluída. Pode agora emitir a fatura.
               </div>
             )}
             
             {os.status === OSStatus.FATURADA && (
-              <div className="text-center p-4 bg-purple-50 border border-purple-200 rounded-xl text-purple-800 font-medium">
+              <div className="text-center p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium">
                 Esta Ordem de Serviço já foi faturada e arquivada.
+              </div>
+            )}
+
+            {os.status === OSStatus.CANCELADA && (
+              <div className="text-center p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 font-medium">
+                Esta Ordem de Serviço foi cancelada.
               </div>
             )}
           </div>
