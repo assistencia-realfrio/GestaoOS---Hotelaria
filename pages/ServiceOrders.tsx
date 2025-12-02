@@ -92,9 +92,13 @@ const ServiceOrders: React.FC = () => {
       {loading ? (
         <div className="text-center py-10 text-gray-500">A carregar ordens de serviço...</div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 divide-y divide-gray-100">
+        <div className="space-y-4"> {/* Alterado para usar space-y-4 para espaçamento */}
           {serviceOrders.map((os) => (
-            <Link to={`/os/${os.id}`} key={os.id} className="block hover:bg-gray-50 transition-colors">
+            <Link 
+              to={`/os/${os.id}`} 
+              key={os.id} 
+              className="block bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors" // Estilos movidos para o Link
+            >
               <div className="p-4 sm:px-6 flex items-center justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
