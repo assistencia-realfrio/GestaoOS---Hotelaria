@@ -106,8 +106,8 @@ const ServiceOrders: React.FC = () => {
                   </div>
                   <div className="flex justify-between items-center">
                      <div>
-                       <p className="text-base font-semibold text-gray-900 truncate">{os.description}</p>
-                       <p className="text-sm text-gray-500">Cliente: <span className="font-medium text-gray-700">{os.client?.name || 'N/A'}</span></p>
+                       <p className="text-base font-semibold text-gray-900 truncate">Cliente: {os.client?.name || 'N/A'}</p>
+                       <p className="text-sm text-gray-500">Problema: <span className="font-medium text-gray-700">{os.description}</span></p>
                        {os.equipment && (
                          <p className="text-sm text-gray-500">Equipamento: <span className="font-medium text-gray-700">{os.equipment.type}</span></p>
                        )}
