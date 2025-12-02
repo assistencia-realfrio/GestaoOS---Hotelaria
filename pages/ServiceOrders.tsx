@@ -21,17 +21,17 @@ const MOCK_EQUIPMENTS: Equipment[] = [
 
 const mockOSList: ServiceOrder[] = [
   { 
-    id: '1', code: 'OS-001', client_id: '1', equipment_id: 'eq-1', type: OSType.AVARIA, status: OSStatus.ATRIBUIDA, description: 'Máquina Gelo Avaria', priority: 'alta', created_at: '2023-10-10',
+    id: '1', code: 'OS-001', client_id: '1', equipment_id: 'eq-1', type: OSType.AVARIA, status: OSStatus.ATRIBUIDA, description: 'Máquina de Gelo não produz cubos, faz barulho estranho.', priority: 'alta', created_at: '2023-10-10',
     client: MOCK_CLIENTS.find(c => c.id === '1'),
     equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-1')
   },
   { 
-    id: '2', code: 'OS-002', client_id: '2', equipment_id: 'eq-3', type: OSType.MANUTENCAO, status: OSStatus.FINALIZADA, description: 'Limpeza Exaustão', priority: 'media', created_at: '2023-10-09',
+    id: '2', code: 'OS-002', client_id: '2', equipment_id: 'eq-3', type: OSType.MANUTENCAO, status: OSStatus.FINALIZADA, description: 'Manutenção preventiva e limpeza geral do sistema de exaustão.', priority: 'media', created_at: '2023-10-09',
     client: MOCK_CLIENTS.find(c => c.id === '2'),
     equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-3')
   },
   { 
-    id: '3', code: 'OS-003', client_id: '3', equipment_id: 'eq-4', type: OSType.INSTALACAO, status: OSStatus.ABERTA, description: 'Instalação Forno', priority: 'media', created_at: '2023-10-11',
+    id: '3', code: 'OS-003', client_id: '3', equipment_id: 'eq-4', type: OSType.INSTALACAO, status: OSStatus.ABERTA, description: 'Instalação de novo forno industrial na cozinha principal.', priority: 'media', created_at: '2023-10-11',
     client: MOCK_CLIENTS.find(c => c.id === '3'),
     equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-4')
   },
