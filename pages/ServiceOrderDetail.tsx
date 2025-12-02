@@ -92,7 +92,7 @@ const ServiceOrderDetail: React.FC = () => {
         client_id: 'cli-1',
         description: 'Máquina de gelo não está a fazer cubos, faz barulho estranho.',
         type: 'avaria' as any,
-        status: OSStatus.ATRIBUIDA, // Default to ATRIBUIDA for demo
+        status: OSStatus.ATRIBUIDA, // Default to ATRIRIBUIDA for demo
         priority: 'alta',
         created_at: new Date(Date.now() - 86400000).toISOString(),
         scheduled_date: new Date().toISOString().split('T')[0],
@@ -351,158 +351,187 @@ const ServiceOrderDetail: React.FC = () => {
   // --- PDF Generation ---
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
+    const companyLogo = 'https://via.placeholder.com/100x40?text=Logo'; // Placeholder logo URL
+
+    // This function needs to be declared before it's called
+    const finalizePdf = () => {
+      // OS Code
+      doc.setFontSize(16);
+      doc.setTextColor(40, 40, 40);
+      doc.text(os.code, 150, 20);
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(new Date().toLocaleDateString(), 150, 26);
+
+      // Client Info
+      doc.setTextColor(0, 0, 0);
+      doc.setFontSize(12);
+      doc.text('Cliente', 20, 50);
+      doc.setLineWidth(0.5);
+      doc.line(20, 52, 190, 52);
+      
+      doc.setFontSize(10);
+      doc.text(`Nome: ${os.client?.name || ''}`, 20, 60);
+      doc.text(`Morada: ${os.client?.address || ''}`, 20, 66);
+      doc.text(`Contacto: ${os.client?.contact_person || ''} (${os.client?.phone || ''})`, 20, 72);
+      if (os.store) {
+        doc.text(`Loja: ${os.store.name}`, 20, 78);
+      }
+
+      // Equipment Info
+      doc.setFontSize(12);
+      doc.text('Equipamento', 110, 50);
+      doc.line(110, 52, 190, 52); // Only partial line visual
+      
+      doc.setFontSize(10);
+      doc.text(`Tipo: ${os.equipment?.type || ''}`, 110, 60);
+      doc.text(`Marca/Modelo: ${os.equipment?.brand || ''} ${os.equipment?.model || ''}`, 110, 66);
+      doc.text(`Nº Série: ${os.equipment?.serial_number || ''}`, 110, 72);
+
+      let currentY = 85;
+
+      // Description
+      doc.setFontSize(11);
+      doc.setFillColor(245, 245, 245);
+      doc.rect(20, currentY, 170, 8, 'F');
+      doc.text('Problema Reportado', 22, currentY + 6);
+      currentY += 12;
+      doc.setFontSize(10);
+      const descLines = doc.splitTextToSize(os.description, 170);
+      doc.text(descLines, 20, currentY);
+      currentY += (descLines.length * 5) + 5;
+
+      // Resolution
+      if (notes) {
+        doc.setFontSize(11);
+        doc.setFillColor(245, 245, 245);
+        doc.rect(20, currentY, 170, 8, 'F');
+        doc.text('Relatório Técnico', 22, currentY + 6);
+        currentY += 12;
+        doc.setFontSize(10);
+        const resLines = doc.splitTextToSize(notes, 170);
+        doc.text(resLines, 20, currentY);
+        currentY += (resLines.length * 5) + 10;
+      }
+
+      // Parts Table
+      if (partsUsed.length > 0) {
+        doc.setFontSize(11);
+        doc.text('Materiais', 20, currentY);
+        currentY += 2;
+        
+        const partsBody = partsUsed.map(p => [
+          p.reference, 
+          p.name, 
+          p.quantity.toString(), 
+          `${p.price.toFixed(2)}€`, 
+          `${(p.price * p.quantity).toFixed(2)}€`
+        ]);
+
+        autoTable(doc, {
+          startY: currentY,
+          head: [['Ref', 'Designação', 'Qtd', 'Preço Unit.', 'Total']],
+          body: partsBody,
+          theme: 'striped',
+          headStyles: { fillColor: [66, 66, 66] }
+        });
+        // @ts-ignore
+        currentY = doc.lastAutoTable.finalY + 10;
+      }
+
+      // Time Table
+      if (timeEntries.length > 0) {
+          doc.setFontSize(11);
+          doc.text('Registo de Tempos', 20, currentY);
+          currentY += 2;
+
+          const timeBody = timeEntries.map(t => [
+              new Date(t.start_time).toLocaleDateString(),
+              new Date(t.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+              t.end_time ? new Date(t.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-',
+              t.duration_minutes ? `${t.duration_minutes} min` : '-'
+          ]);
+
+          autoTable(doc, {
+              startY: currentY,
+              head: [['Data', 'Início', 'Fim', 'Duração']],
+              body: timeBody,
+              theme: 'plain',
+              styles: { fontSize: 9 }
+          });
+          // @ts-ignore
+          currentY = doc.lastAutoTable.finalY + 10;
+      }
+
+      // Totals
+      const totalParts = partsUsed.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+      
+      doc.setFontSize(10);
+      doc.text(`Total Peças: ${totalParts.toFixed(2)}€`, 140, currentY);
+      doc.text(`Total Horas: ${totalHours}h`, 140, currentY + 5);
+
+      // Signature
+      currentY += 20;
+      if (currentY > 250) {
+          doc.addPage();
+          currentY = 20;
+      }
+
+      if (signature) {
+          doc.text('Assinatura do Cliente:', 20, currentY);
+          try {
+              doc.addImage(signature, 'PNG', 20, currentY + 5, 60, 30);
+          } catch (e) {
+              doc.text('(Erro ao carregar imagem)', 20, currentY + 15);
+          }
+      } else {
+          doc.text('Assinatura não recolhida.', 20, currentY);
+      }
+
+      // Footer
+      const pageCount = doc.getNumberOfPages();
+      for(let i = 1; i <= pageCount; i++) {
+          doc.setPage(i);
+          doc.setFontSize(8);
+          doc.setTextColor(150);
+          doc.text(`Página ${i} de ${pageCount} - Gerado por GestãoOS`, 100, 290, { align: 'center' });
+      }
+
+      doc.save(`Relatorio_${os.code}.pdf`);
+    };
 
     // Company Header
     doc.setFillColor(240, 240, 240);
     doc.rect(0, 0, 210, 40, 'F');
-    doc.setFontSize(22);
-    doc.setTextColor(40, 40, 40);
-    doc.text('Hotelaria Assist', 20, 20);
-    doc.setFontSize(10);
-    doc.text('Relatório de Serviço Técnico', 20, 28);
     
-    // OS Code
-    doc.setFontSize(16);
-    doc.text(os.code, 150, 20);
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(new Date().toLocaleDateString(), 150, 26);
-
-    // Client Info
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.text('Cliente', 20, 50);
-    doc.setLineWidth(0.5);
-    doc.line(20, 52, 190, 52);
-    
-    doc.setFontSize(10);
-    doc.text(`Nome: ${os.client?.name || ''}`, 20, 60);
-    doc.text(`Morada: ${os.client?.address || ''}`, 20, 66);
-    doc.text(`Contacto: ${os.client?.contact_person || ''} (${os.client?.phone || ''})`, 20, 72);
-    if (os.store) {
-      doc.text(`Loja: ${os.store.name}`, 20, 78);
-    }
-
-    // Equipment Info
-    doc.setFontSize(12);
-    doc.text('Equipamento', 110, 50);
-    doc.line(110, 52, 190, 52); // Only partial line visual
-    
-    doc.setFontSize(10);
-    doc.text(`Tipo: ${os.equipment?.type || ''}`, 110, 60);
-    doc.text(`Marca/Modelo: ${os.equipment?.brand || ''} ${os.equipment?.model || ''}`, 110, 66);
-    doc.text(`Nº Série: ${os.equipment?.serial_number || ''}`, 110, 72);
-
-    let currentY = 85;
-
-    // Description
-    doc.setFontSize(11);
-    doc.setFillColor(245, 245, 245);
-    doc.rect(20, currentY, 170, 8, 'F');
-    doc.text('Problema Reportado', 22, currentY + 6);
-    currentY += 12;
-    doc.setFontSize(10);
-    const descLines = doc.splitTextToSize(os.description, 170);
-    doc.text(descLines, 20, currentY);
-    currentY += (descLines.length * 5) + 5;
-
-    // Resolution
-    if (notes) {
-      doc.setFontSize(11);
-      doc.setFillColor(245, 245, 245);
-      doc.rect(20, currentY, 170, 8, 'F');
-      doc.text('Relatório Técnico', 22, currentY + 6);
-      currentY += 12;
-      doc.setFontSize(10);
-      const resLines = doc.splitTextToSize(notes, 170);
-      doc.text(resLines, 20, currentY);
-      currentY += (resLines.length * 5) + 10;
-    }
-
-    // Parts Table
-    if (partsUsed.length > 0) {
-      doc.setFontSize(11);
-      doc.text('Materiais', 20, currentY);
-      currentY += 2;
-      
-      const partsBody = partsUsed.map(p => [
-        p.reference, 
-        p.name, 
-        p.quantity.toString(), 
-        `${p.price.toFixed(2)}€`, 
-        `${(p.price * p.quantity).toFixed(2)}€`
-      ]);
-
-      autoTable(doc, {
-        startY: currentY,
-        head: [['Ref', 'Designação', 'Qtd', 'Preço Unit.', 'Total']],
-        body: partsBody,
-        theme: 'striped',
-        headStyles: { fillColor: [66, 66, 66] }
-      });
-      // @ts-ignore
-      currentY = doc.lastAutoTable.finalY + 10;
-    }
-
-    // Time Table
-    if (timeEntries.length > 0) {
-        doc.setFontSize(11);
-        doc.text('Registo de Tempos', 20, currentY);
-        currentY += 2;
-
-        const timeBody = timeEntries.map(t => [
-            new Date(t.start_time).toLocaleDateString(),
-            new Date(t.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-            t.end_time ? new Date(t.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-',
-            t.duration_minutes ? `${t.duration_minutes} min` : '-'
-        ]);
-
-        autoTable(doc, {
-            startY: currentY,
-            head: [['Data', 'Início', 'Fim', 'Duração']],
-            body: timeBody,
-            theme: 'plain',
-            styles: { fontSize: 9 }
-        });
-        // @ts-ignore
-        currentY = doc.lastAutoTable.finalY + 10;
-    }
-
-    // Totals
-    const totalParts = partsUsed.reduce((acc, p) => acc + (p.price * p.quantity), 0);
-    
-    doc.setFontSize(10);
-    doc.text(`Total Peças: ${totalParts.toFixed(2)}€`, 140, currentY);
-    doc.text(`Total Horas: ${totalHours}h`, 140, currentY + 5);
-
-    // Signature
-    currentY += 20;
-    if (currentY > 250) {
-        doc.addPage();
-        currentY = 20;
-    }
-
-    if (signature) {
-        doc.text('Assinatura do Cliente:', 20, currentY);
-        try {
-            doc.addImage(signature, 'PNG', 20, currentY + 5, 60, 30);
-        } catch (e) {
-            doc.text('(Erro ao carregar imagem)', 20, currentY + 15);
-        }
+    // Add logo
+    if (companyLogo) {
+      const img = new Image();
+      img.src = companyLogo;
+      img.onload = () => {
+        doc.addImage(img, 'PNG', 15, 10, 30, 12); // Adjust position and size as needed
+        doc.setFontSize(10);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Relatório de Serviço Técnico', 15, 28);
+        finalizePdf();
+      };
+      img.onerror = () => {
+        console.warn("Failed to load company logo for PDF. Proceeding without it.");
+        doc.setFontSize(22);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Hotelaria Assist', 20, 20);
+        doc.setFontSize(10);
+        doc.text('Relatório de Serviço Técnico', 20, 28);
+        finalizePdf();
+      };
     } else {
-        doc.text('Assinatura não recolhida.', 20, currentY);
+      doc.setFontSize(22);
+      doc.setTextColor(40, 40, 40);
+      doc.text('Hotelaria Assist', 20, 20);
+      doc.setFontSize(10);
+      doc.text('Relatório de Serviço Técnico', 20, 28);
+      finalizePdf();
     }
-
-    // Footer
-    const pageCount = doc.getNumberOfPages();
-    for(let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text(`Página ${i} de ${pageCount} - Gerado por GestãoOS`, 100, 290, { align: 'center' });
-    }
-
-    doc.save(`Relatorio_${os.code}.pdf`);
   };
 
   // --- Handlers ---
@@ -795,7 +824,6 @@ const ServiceOrderDetail: React.FC = () => {
             {os.status === OSStatus.INICIADA && !isReadOnly && (
               <button 
                 onClick={handlePauseOS}
-                disabled={actionLoading}
                 className="flex-1 md:flex-none flex items-center justify-center bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
               >
                 <Pause size={18} className="mr-2" /> Pausa
