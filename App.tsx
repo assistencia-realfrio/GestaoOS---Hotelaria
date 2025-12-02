@@ -12,7 +12,8 @@ import ClientDetail from './pages/ClientDetail';
 import NewClient from './pages/NewClient';
 import EditClient from './pages/EditClient';
 import Equipments from './pages/Equipments';
-import NewEquipment from './pages/NewEquipment'; // Import the new component
+import NewEquipment from './pages/NewEquipment';
+import EditEquipment from './pages/EditEquipment'; // Import the new component
 import Profile from './pages/Profile';
 import { UserRole } from './types';
 
@@ -80,9 +81,12 @@ function App() {
         <Route path="/clients/new" element={session ? <Layout userRole={role}><NewClient /></Layout> : <Navigate to="/login" />} />
         <Route path="/clients/:id" element={session ? <Layout userRole={role}><ClientDetail /></Layout> : <Navigate to="/login" />} />
         <Route path="/clients/:id/edit" element={session ? <Layout userRole={role}><EditClient /></Layout> : <Navigate to="/login" />} />
-        <Route path="/clients/:clientId/equipments/new" element={session ? <Layout userRole={role}><NewEquipment /></Layout> : <Navigate to="/login" />} /> {/* New Equipment Route */}
+        <Route path="/clients/:clientId/equipments/new" element={session ? <Layout userRole={role}><NewEquipment /></Layout> : <Navigate to="/login" />} />
         
+        {/* Equipment Routes */}
         <Route path="/equipments" element={session ? <Layout userRole={role}><Equipments /></Layout> : <Navigate to="/login" />} />
+        <Route path="/equipments/:id/edit" element={session ? <Layout userRole={role}><EditEquipment /></Layout> : <Navigate to="/login" />} /> {/* New Edit Equipment Route */}
+
         <Route path="/profile" element={session ? <Layout userRole={role}><Profile /></Layout> : <Navigate to="/login" />} />
         
         <Route path="*" element={<Navigate to="/" />} />

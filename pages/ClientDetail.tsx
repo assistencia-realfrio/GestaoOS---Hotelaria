@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom'; // Import useNavigate
-import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText, Edit, Plus } from 'lucide-react'; // Import Edit icon and Plus
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText, Edit, Plus } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store, ClientType } from '../types';
 
@@ -13,7 +13,7 @@ const MOCK_STORES: Store[] = [
 const MOCK_CLIENT: Client = { 
   id: '1', name: 'Hotel Baía Azul', type: ClientType.HOTEL, address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@baiaazul.pt', contact_person: 'Sr. Silva', notes: 'Cliente preferencial. Acesso pelas traseiras.',
   store_id: MOCK_STORES[0].id, store: MOCK_STORES[0],
-  billing_name: 'Hotel Baía Azul, Lda.' // Added for demo
+  billing_name: 'Hotel Baía Azul, Lda.'
 };
 
 const MOCK_EQUIPMENTS: Equipment[] = [
@@ -29,7 +29,7 @@ const MOCK_HISTORY: ServiceOrder[] = [
 
 const ClientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate(); // Initialize useNavigate
+  const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [history, setHistory] = useState<ServiceOrder[]>([]);
@@ -54,7 +54,7 @@ const ClientDetail: React.FC = () => {
 
         // Fetch Equipment
         const { data: equipData } = await supabase.from('equipments').select('*').eq('client_id', id);
-        if (equipData) setEquipments(equipData); // Corrected from setEquipData to setEquipments
+        if (equipData) setEquipments(equipData);
 
         // Fetch History
         const { data: historyData } = await supabase.from('service_orders').select('*').eq('client_id', id).order('created_at', { ascending: false });
@@ -94,7 +94,7 @@ const ClientDetail: React.FC = () => {
                <User className="w-5 h-5 mr-3 text-gray-400" />
                <span className="font-medium text-gray-900">{client.contact_person}</span>
              </div>
-             {client.billing_name && ( // Display billing name if available
+             {client.billing_name && (
                <div className="flex items-center text-gray-600">
                  <ReceiptText className="w-5 h-5 mr-3 text-gray-400" />
                  <span className="font-medium text-gray-900">{client.billing_name}</span>
@@ -180,6 +180,17 @@ const ClientDetail: React.FC = () => {
                        <p className="text-sm text-gray-600">Marca: <span className="font-medium text-gray-800">{eq.brand}</span></p>
                        <p className="text-sm text-gray-600">Modelo: <span className="font-medium text-gray-800">{eq.model}</span></p>
                        <p className="text-xs text-gray-500 mt-2">S/N: {eq.serial_number}</p>
+                       <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
+                         <button
+                           onClick={(e) => {
+                             e.preventDefault(); // Prevent navigating to client detail
+                             navigate(`/equipments/${eq.id}/edit`);
+                           }}
+                           className="flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium"
+                         >
+                           <Edit size={14} className="mr-1" /> Editar
+                         </button>
+                       </div>
                     </div>
                   ))}
                 </div>
