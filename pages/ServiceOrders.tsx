@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Filter, Plus } from 'lucide-react';
-import { ServiceOrder, OSStatus, OSType, Client } from '../types';
+import { ServiceOrder, OSStatus, OSType, Client, Equipment } from '../types';
 import { supabase } from '../supabaseClient';
 
 // Mock data for demo mode (consistent with Clients.tsx)
@@ -12,18 +12,28 @@ const MOCK_CLIENTS: Client[] = [
   { id: '4', name: 'Lavandaria Expresso', type: 'Lavandaria', address: 'Rua das Flores, Porto', phone: '223344556', email: 'info@expresso.pt', contact_person: 'Ana Costa' },
 ];
 
+const MOCK_EQUIPMENTS: Equipment[] = [
+  { id: 'eq-1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45CNE', serial_number: 'L00543', status: 'ativo' },
+  { id: 'eq-2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi Pro', serial_number: 'E112233', status: 'em_reparacao' },
+  { id: 'eq-3', client_id: '2', type: 'Máquina de Café', brand: 'Jura', model: 'Giga X8', serial_number: 'JX8001', status: 'ativo' },
+  { id: 'eq-4', client_id: '3', type: 'Máquina de Lavar Louça', brand: 'Winterhalter', model: 'PT-500', serial_number: 'WPT500', status: 'ativo' },
+];
+
 const mockOSList: ServiceOrder[] = [
   { 
-    id: '1', code: 'OS-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.ATRIBUIDA, description: 'Máquina Gelo Avaria', priority: 'alta', created_at: '2023-10-10',
-    client: MOCK_CLIENTS.find(c => c.id === '1') 
+    id: '1', code: 'OS-001', client_id: '1', equipment_id: 'eq-1', type: OSType.AVARIA, status: OSStatus.ATRIBUIDA, description: 'Máquina Gelo Avaria', priority: 'alta', created_at: '2023-10-10',
+    client: MOCK_CLIENTS.find(c => c.id === '1'),
+    equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-1')
   },
   { 
-    id: '2', code: 'OS-002', client_id: '2', type: OSType.MANUTENCAO, status: OSStatus.FINALIZADA, description: 'Limpeza Exaustão', priority: 'media', created_at: '2023-10-09',
-    client: MOCK_CLIENTS.find(c => c.id === '2') 
+    id: '2', code: 'OS-002', client_id: '2', equipment_id: 'eq-3', type: OSType.MANUTENCAO, status: OSStatus.FINALIZADA, description: 'Limpeza Exaustão', priority: 'media', created_at: '2023-10-09',
+    client: MOCK_CLIENTS.find(c => c.id === '2'),
+    equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-3')
   },
   { 
-    id: '3', code: 'OS-003', client_id: '3', type: OSType.INSTALACAO, status: OSStatus.ABERTA, description: 'Instalação Forno', priority: 'media', created_at: '2023-10-11',
-    client: MOCK_CLIENTS.find(c => c.id === '3') 
+    id: '3', code: 'OS-003', client_id: '3', equipment_id: 'eq-4', type: OSType.INSTALACAO, status: OSStatus.ABERTA, description: 'Instalação Forno', priority: 'media', created_at: '2023-10-11',
+    client: MOCK_CLIENTS.find(c => c.id === '3'),
+    equipment: MOCK_EQUIPMENTS.find(e => e.id === 'eq-4')
   },
 ];
 
@@ -48,7 +58,8 @@ const ServiceOrders: React.FC = () => {
         .from('service_orders')
         .select(`
           *,
-          client:clients(*) // Fetch client details
+          client:clients(*), // Fetch client details
+          equipment:equipments(*) // Fetch equipment details
         `)
         .order('created_at', { ascending: false });
       
@@ -97,6 +108,9 @@ const ServiceOrders: React.FC = () => {
                      <div>
                        <p className="text-base font-semibold text-gray-900 truncate">{os.description}</p>
                        <p className="text-sm text-gray-500">Cliente: <span className="font-medium text-gray-700">{os.client?.name || 'N/A'}</span></p>
+                       {os.equipment && (
+                         <p className="text-sm text-gray-500">Equipamento: <span className="font-medium text-gray-700">{os.equipment.type}</span></p>
+                       )}
                        <p className="text-sm text-gray-500">Prioridade: {os.priority}</p>
                      </div>
                      <div className="text-right">
