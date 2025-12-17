@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ClipboardList, Users, HardDrive, LayoutDashboard, LogOut, User, WifiOff } from 'lucide-react';
+import { Menu, X, ClipboardList, Users, HardDrive, LayoutDashboard, LogOut, User, WifiOff, Plus, ArrowUp, UserCog } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { UserRole } from '../types';
+import BrandLogo from './BrandLogo';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -12,19 +13,39 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+    
+    // Scroll detection for FAB
+    const handleScroll = () => {
+      const mainElement = document.querySelector('main');
+      if (mainElement && mainElement.scrollTop > 300) {
+        setShowScrollTop(true);
+      } else if (window.scrollY > 300) {
+        // Fallback for window scroll
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    // Attach scroll listener to window and main container just in case
+    window.addEventListener('scroll', handleScroll);
+    const mainEl = document.querySelector('main');
+    if (mainEl) mainEl.addEventListener('scroll', handleScroll);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('scroll', handleScroll);
+      if (mainEl) mainEl.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
@@ -39,14 +60,44 @@ const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
     navigate('/login');
   };
 
+  const scrollToTop = () => {
+    const mainEl = document.querySelector('main');
+    if (mainEl) {
+      mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Ordens de Serviço', path: '/os', icon: ClipboardList },
     { name: 'Clientes', path: '/clients', icon: Users },
     { name: 'Equipamentos', path: '/equipments', icon: HardDrive },
+    { name: 'Utilizadores', path: '/users', icon: UserCog },
   ];
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Dynamic FAB Configuration based on Route
+  const getFabConfig = () => {
+    const path = location.pathname;
+    
+    if (path.startsWith('/clients')) {
+      return { to: '/clients/new', title: 'Novo Cliente', visible: true };
+    }
+    if (path.startsWith('/equipments')) {
+      return { to: '/equipments/new', title: 'Novo Equipamento', visible: true };
+    }
+    if (path.startsWith('/users')) {
+      return { to: '#', title: 'Convidar Utilizador', visible: false }; // Hide FAB on users for now
+    }
+    // Default to OS creation (Dashboard and OS list)
+    return { to: '/os/new', title: 'Nova Ordem de Serviço', visible: true };
+  };
+
+  const fabConfig = getFabConfig();
+  // Hide FAB on creation pages (any path ending in /new)
+  const showFab = fabConfig.visible && !location.pathname.endsWith('/new');
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
@@ -72,10 +123,14 @@ const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
         lg:relative lg:translate-x-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="flex items-center justify-between h-16 px-6 bg-slate-800">
-          <span className="text-xl font-bold tracking-wider">GestãoOS</span>
+        <div className="flex items-center justify-between h-20 px-4 bg-slate-800">
+          <div className="w-full flex justify-center">
+            <Link to="/os" className="hover:opacity-90 transition-opacity" title="Ir para Ordens de Serviço">
+              <BrandLogo variant="light" size="sm" />
+            </Link>
+          </div>
           <button 
-            className="lg:hidden text-gray-300 hover:text-white"
+            className="lg:hidden text-gray-300 hover:text-white absolute right-4 top-6"
             onClick={() => setSidebarOpen(false)}
           >
             <X size={24} />
@@ -121,7 +176,7 @@ const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <header className="bg-white shadow-sm lg:hidden z-10 mt-0">
           <div className="flex items-center justify-between h-16 px-4">
             <button
@@ -130,14 +185,41 @@ const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
             >
               <Menu size={24} />
             </button>
-            <span className="text-lg font-bold text-gray-900">GestãoOS</span>
+            <Link to="/os" className="hover:opacity-90 transition-opacity">
+              <BrandLogo variant="dark" size="sm" />
+            </Link>
             <div className="w-6" />
           </div>
         </header>
 
-        <main className={`flex-1 overflow-y-auto p-4 md:p-8 ${!isOnline ? 'pt-8' : ''}`}>
+        <main className={`flex-1 overflow-y-auto p-4 md:p-8 ${!isOnline ? 'pt-8' : ''} scroll-smooth`}>
           {children}
         </main>
+
+        {/* Floating Action Buttons (FAB) */}
+        <div className="fixed bottom-6 right-6 z-10 flex flex-col gap-3">
+          {/* Scroll To Top */}
+          {showScrollTop && (
+            <button 
+              onClick={scrollToTop}
+              className="p-3 bg-white text-gray-600 rounded-full shadow-lg border border-gray-200 hover:bg-gray-50 hover:text-gray-900 transition-all transform hover:scale-110"
+              title="Voltar ao topo"
+            >
+              <ArrowUp size={20} />
+            </button>
+          )}
+
+          {/* Dynamic Creation Button */}
+          {showFab && (
+            <Link 
+              to={fabConfig.to}
+              className="p-4 bg-blue-600 text-white rounded-full shadow-xl hover:bg-blue-700 hover:shadow-2xl transition-all transform hover:scale-110 flex items-center justify-center"
+              title={fabConfig.title}
+            >
+              <Plus size={24} />
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

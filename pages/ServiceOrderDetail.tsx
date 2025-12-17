@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Play, Pause, CheckSquare, Camera, PenTool, Save, Wand2, Plus, Trash2, X, Package, FileCheck, RotateCcw, DollarSign, Clock, Calendar, Timer, History, Lock, FileText, Download, AlertTriangle, ArrowLeft, Ban } from 'lucide-react';
+import { Play, Pause, CheckSquare, Camera, PenTool, Save, Wand2, Plus, Trash2, X, Package, FileCheck, RotateCcw, DollarSign, Clock, Calendar, Timer, History, Lock, FileText, Download, AlertTriangle, ArrowLeft, ChevronDown } from 'lucide-react';
 import SignatureCanvas from '../components/SignatureCanvas';
-import { OSStatus, ServiceOrder, PartUsed, PartCatalogItem, OSPhoto, TimeEntry, Store } from '../types';
+import { OSStatus, ServiceOrder, PartUsed, PartCatalogItem, OSPhoto, TimeEntry, OSType } from '../types';
 import { generateOSReportSummary } from '../services/geminiService';
 import { supabase } from '../supabaseClient';
 import jsPDF from 'jspdf';
@@ -17,10 +17,133 @@ const MOCK_CATALOG: PartCatalogItem[] = [
   { id: 'p5', name: 'Vedante Porta', reference: 'VED-09', price: 35.00, stock: 15 },
 ];
 
-const MOCK_STORES: Store[] = [
-  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', short_code: 'CR', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
-  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', short_code: 'PM', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
-];
+// --- MOCK DATABASE FOR DEMO MODE ---
+const MOCK_DB: Record<string, ServiceOrder> = {
+  '1': {
+    id: '1',
+    code: 'OS-2023-001',
+    client_id: 'cli-1',
+    equipment_id: 'eq-1',
+    type: OSType.AVARIA,
+    status: OSStatus.INICIADA,
+    priority: 'alta',
+    description: 'Máquina de gelo parou de fabricar gelo. Compressor muito quente.',
+    created_at: '2023-10-10T09:00:00Z',
+    scheduled_date: '2023-10-10T14:00:00',
+    start_time: '2023-10-10T14:15:00',
+    client: {
+      id: 'cli-1',
+      name: 'Hotel Baía Azul',
+      address: 'Av. Marginal 123, Lisboa',
+      contact_person: 'Sr. Silva',
+      email: 'admin@baiaazul.pt',
+      phone: '912345678',
+      type: 'Hotel'
+    },
+    equipment: {
+      id: 'eq-1',
+      client_id: 'cli-1',
+      brand: 'Hoshizaki',
+      model: 'IM-45CNE',
+      serial_number: 'L00543',
+      type: 'Máquina de Gelo',
+      status: 'ativo'
+    }
+  },
+  '2': {
+    id: '2',
+    code: 'OS-2023-002',
+    client_id: 'cli-2',
+    equipment_id: 'eq-2',
+    type: OSType.MANUTENCAO,
+    status: OSStatus.AGUARDA_PECAS,
+    priority: 'media',
+    description: 'Limpeza preventiva da exaustão e verificação de filtros.',
+    created_at: '2023-10-11T14:30:00Z',
+    scheduled_date: '2023-10-12T10:00:00',
+    client: {
+      id: 'cli-2',
+      name: 'Restaurante O Pescador',
+      address: 'Rua do Porto 5, Setúbal',
+      contact_person: 'D. Maria',
+      email: 'pescador@rest.pt',
+      phone: '966554433',
+      type: 'Restaurante'
+    },
+    equipment: {
+      id: 'eq-2',
+      client_id: 'cli-2',
+      brand: 'Industrial',
+      model: 'X500',
+      serial_number: 'EX-9988',
+      type: 'Exaustão',
+      status: 'ativo'
+    }
+  },
+  '3': {
+    id: '3',
+    code: 'OS-2023-003',
+    client_id: 'cli-3',
+    equipment_id: 'eq-3',
+    type: OSType.INSTALACAO,
+    status: OSStatus.CONCLUIDA,
+    priority: 'media',
+    description: 'Instalação de novo Forno Convector Rational.',
+    created_at: '2023-10-09T10:00:00Z',
+    scheduled_date: '2023-10-09T09:00:00',
+    start_time: '2023-10-09T09:30:00',
+    end_time: '2023-10-09T12:30:00',
+    resolution_notes: 'Instalação efetuada com sucesso. Testes de temperatura ok.',
+    client: {
+      id: 'cli-3',
+      name: 'Pastelaria Central',
+      address: 'Praça da República, Coimbra',
+      contact_person: 'João Santos',
+      email: 'geral@central.pt',
+      phone: '239123123',
+      type: 'Pastelaria'
+    },
+    equipment: {
+      id: 'eq-3',
+      client_id: 'cli-3',
+      brand: 'Rational',
+      model: 'iCombi',
+      serial_number: 'RAT-2023-X',
+      type: 'Forno',
+      status: 'ativo'
+    }
+  },
+  '4': {
+    id: '4',
+    code: 'OS-2023-004',
+    client_id: 'cli-1',
+    equipment_id: 'eq-4',
+    type: OSType.REVISAO,
+    status: OSStatus.POR_INICIAR,
+    priority: 'baixa',
+    description: 'Revisão geral das câmaras frigoríficas antes da época alta.',
+    created_at: '2023-10-12T08:00:00Z',
+    scheduled_date: '2023-10-15T08:00:00',
+    client: {
+      id: 'cli-1',
+      name: 'Hotel Baía Azul',
+      address: 'Av. Marginal 123, Lisboa',
+      contact_person: 'Sr. Silva',
+      email: 'admin@baiaazul.pt',
+      phone: '912345678',
+      type: 'Hotel'
+    },
+    equipment: {
+      id: 'eq-4',
+      client_id: 'cli-1',
+      brand: 'FrioInd',
+      model: 'CF-20',
+      serial_number: 'CF-001',
+      type: 'Câmara Frigorífica',
+      status: 'ativo'
+    }
+  }
+};
 
 const ServiceOrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -84,44 +207,66 @@ const ServiceOrderDetail: React.FC = () => {
     setLoading(true);
     
     if (demoMode) {
-      // MOCK DATA for Demo
+      // Use MOCK_DB instead of single hardcoded object
       await new Promise(r => setTimeout(r, 500));
-      setOs({
-        id: id || '1',
-        code: 'CR-20241026-001', // New code format
-        client_id: 'cli-1',
-        description: 'Máquina de gelo não está a fazer cubos, faz barulho estranho.',
-        type: 'avaria' as any,
-        status: OSStatus.ATRIBUIDA, // Default to ATRIRIBUIDA for demo
-        priority: 'alta',
-        created_at: new Date(Date.now() - 86400000).toISOString(),
-        scheduled_date: new Date().toISOString().split('T')[0],
-        store_id: MOCK_STORES[0].id, store: MOCK_STORES[0], // Add store info
-        client: {
-          id: 'cli-1',
-          name: 'Hotel Baía Azul',
-          address: 'Av. Marginal 123, Lisboa',
-          contact_person: 'Sr. Silva',
-          email: 'admin@baiaazul.pt',
-          phone: '912345678',
-          type: 'Hotel',
-          store_id: MOCK_STORES[0].id
-        },
-        equipment: {
-          id: 'eq-1',
-          client_id: 'cli-1',
-          brand: 'Hoshizaki',
-          model: 'IM-45CNE',
-          serial_number: 'L00543',
-          type: 'Máquina de Gelo',
-          status: 'ativo',
-          store_id: MOCK_STORES[0].id
+      
+      const foundOS = id && MOCK_DB[id] ? MOCK_DB[id] : null;
+
+      if (foundOS) {
+        setOs(foundOS);
+        
+        // Mock specific data based on ID for better demo experience
+        if (foundOS.id === '1') { // Iniciada
+           setTimeEntries([{ 
+             id: 't1', os_id: '1', 
+             start_time: foundOS.start_time || new Date().toISOString(), 
+             end_time: null, 
+             description: 'Diagnóstico em curso' 
+           }]);
+           // Set active timer logic automatically
+           const active = { 
+             id: 't1', os_id: '1', 
+             start_time: foundOS.start_time || new Date().toISOString(), 
+             end_time: null, 
+             description: 'Diagnóstico em curso' 
+           };
+           setActiveTimerEntry(active as any);
+        } else if (foundOS.id === '3') { // Concluída
+           setTimeEntries([{ 
+             id: 't3', os_id: '3', 
+             start_time: foundOS.start_time || '', 
+             end_time: foundOS.end_time || '', 
+             duration_minutes: 180, 
+             description: 'Instalação completa' 
+           }]);
+           setNotes(foundOS.resolution_notes || '');
         }
-      });
-      // Mock Time Entries
-      setTimeEntries([
-        { id: 't1', os_id: id || '1', start_time: new Date(Date.now() - 7200000).toISOString(), end_time: new Date(Date.now() - 3600000).toISOString(), duration_minutes: 60, description: 'Diagnóstico inicial' }
-      ]);
+
+        if (foundOS.resolution_notes) setNotes(foundOS.resolution_notes);
+        if (foundOS.internal_notes) setInternalNotes(foundOS.internal_notes);
+        
+      } else {
+        // Fallback for unknown ID in demo
+        setOs({
+          id: id || '999',
+          code: `OS-DEMO-${id}`,
+          client_id: 'cli-demo',
+          description: 'Ordem de serviço de demonstração.',
+          type: OSType.AVARIA,
+          status: OSStatus.POR_INICIAR,
+          priority: 'media',
+          created_at: new Date().toISOString(),
+          client: {
+             id: 'cli-demo', name: 'Cliente Demo', address: 'Rua Exemplo', 
+             phone: '000000000', email: 'demo@exemplo.com', type: 'Outro', contact_person: 'N/A'
+          },
+          equipment: {
+             id: 'eq-demo', client_id: 'cli-demo', type: 'Genérico', 
+             brand: 'Marca', model: 'Modelo', serial_number: '0000', status: 'ativo'
+          }
+        });
+      }
+      
       setLoading(false);
       return;
     }
@@ -130,7 +275,7 @@ const ServiceOrderDetail: React.FC = () => {
       // 1. Fetch OS Header
       const { data: osData, error: osError } = await supabase
         .from('service_orders')
-        .select(`*, client:clients(*), equipment:equipments(*), store:stores(name, short_code)`) // Fetch store details, include short_code
+        .select(`*, client:clients(*), equipment:equipments(*)`)
         .eq('id', id)
         .single();
 
@@ -169,36 +314,30 @@ const ServiceOrderDetail: React.FC = () => {
   if (!os) return <div className="p-8 text-center text-red-500">Ordem de Serviço não encontrada.</div>;
 
   // --- Helpers ---
-  const getStatusLabel = (status: OSStatus) => {
+  const getStatusLabel = (status: string) => {
     switch (status) {
       case OSStatus.POR_INICIAR: return 'Por Iniciar';
-      case OSStatus.ATRIBUIDA: return 'Atribuída';
       case OSStatus.INICIADA: return 'Iniciada';
-      case OSStatus.PAUSA: return 'Pausa';
       case OSStatus.PARA_ORCAMENTO: return 'Para Orçamento';
       case OSStatus.ORCAMENTO_ENVIADO: return 'Orçamento Enviado';
       case OSStatus.AGUARDA_PECAS: return 'Aguarda Peças';
       case OSStatus.PECAS_RECEBIDAS: return 'Peças Recebidas';
       case OSStatus.CONCLUIDA: return 'Concluída';
-      case OSStatus.FATURADA: return 'Faturada';
       case OSStatus.CANCELADA: return 'Cancelada';
       default: return status;
     }
   };
 
-  const getStatusColor = (status: OSStatus) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case OSStatus.POR_INICIAR: return 'bg-blue-100 text-blue-800 border-blue-200';
-      case OSStatus.ATRIBUIDA: return 'bg-indigo-100 text-indigo-800 border-indigo-200';
-      case OSStatus.INICIADA: return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case OSStatus.PAUSA: return 'bg-orange-100 text-orange-800 border-orange-200';
-      case OSStatus.PARA_ORCAMENTO: return 'bg-purple-100 text-purple-800 border-purple-200';
-      case OSStatus.ORCAMENTO_ENVIADO: return 'bg-pink-100 text-pink-800 border-pink-200';
-      case OSStatus.AGUARDA_PECAS: return 'bg-red-100 text-red-800 border-red-200';
-      case OSStatus.PECAS_RECEBIDAS: return 'bg-teal-100 text-teal-800 border-teal-200';
-      case OSStatus.CONCLUIDA: return 'bg-green-100 text-green-800 border-green-200';
-      case OSStatus.FATURADA: return 'bg-gray-200 text-gray-800 border-gray-300'; // Faturada pode ser mais neutra
-      case OSStatus.CANCELADA: return 'bg-gray-300 text-gray-700 border-gray-400';
+      case OSStatus.POR_INICIAR: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case OSStatus.INICIADA: return 'bg-blue-50 text-blue-700 border-blue-200';
+      case OSStatus.PARA_ORCAMENTO: return 'bg-yellow-50 text-yellow-700 border-yellow-200';
+      case OSStatus.ORCAMENTO_ENVIADO: return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case OSStatus.AGUARDA_PECAS: return 'bg-orange-50 text-orange-700 border-orange-200';
+      case OSStatus.PECAS_RECEBIDAS: return 'bg-teal-50 text-teal-700 border-teal-200';
+      case OSStatus.CONCLUIDA: return 'bg-green-50 text-green-700 border-green-200';
+      case OSStatus.CANCELADA: return 'bg-red-50 text-red-700 border-red-200';
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
@@ -351,192 +490,173 @@ const ServiceOrderDetail: React.FC = () => {
   // --- PDF Generation ---
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
-    const companyLogo = 'https://via.placeholder.com/100x40?text=Logo'; // Placeholder logo URL
-
-    // This function needs to be declared before it's called
-    const finalizePdf = () => {
-      // OS Code
-      doc.setFontSize(16);
-      doc.setTextColor(40, 40, 40);
-      doc.text(os.code, 150, 20);
-      doc.setFontSize(10);
-      doc.setTextColor(100, 100, 100);
-      doc.text(new Date().toLocaleDateString(), 150, 26);
-
-      // Client Info
-      doc.setTextColor(0, 0, 0);
-      doc.setFontSize(12);
-      doc.text('Cliente', 20, 50);
-      doc.setLineWidth(0.5);
-      doc.line(20, 52, 190, 52);
-      
-      doc.setFontSize(10);
-      doc.text(`Nome: ${os.client?.name || ''}`, 20, 60);
-      doc.text(`Morada: ${os.client?.address || ''}`, 20, 66);
-      doc.text(`Contacto: ${os.client?.contact_person || ''} (${os.client?.phone || ''})`, 20, 72);
-      if (os.store) {
-        doc.text(`Loja: ${os.store.name}`, 20, 78);
-      }
-
-      // Equipment Info
-      doc.setFontSize(12);
-      doc.text('Equipamento', 110, 50);
-      doc.line(110, 52, 190, 52); // Only partial line visual
-      
-      doc.setFontSize(10);
-      doc.text(`Tipo: ${os.equipment?.type || ''}`, 110, 60);
-      doc.text(`Marca/Modelo: ${os.equipment?.brand || ''} ${os.equipment?.model || ''}`, 110, 66);
-      doc.text(`Nº Série: ${os.equipment?.serial_number || ''}`, 110, 72);
-
-      let currentY = 85;
-
-      // Description
-      doc.setFontSize(11);
-      doc.setFillColor(245, 245, 245);
-      doc.rect(20, currentY, 170, 8, 'F');
-      doc.text('Problema Reportado', 22, currentY + 6);
-      currentY += 12;
-      doc.setFontSize(10);
-      const descLines = doc.splitTextToSize(os.description, 170);
-      doc.text(descLines, 20, currentY);
-      currentY += (descLines.length * 5) + 5;
-
-      // Resolution
-      if (notes) {
-        doc.setFontSize(11);
-        doc.setFillColor(245, 245, 245);
-        doc.rect(20, currentY, 170, 8, 'F');
-        doc.text('Relatório Técnico', 22, currentY + 6);
-        currentY += 12;
-        doc.setFontSize(10);
-        const resLines = doc.splitTextToSize(notes, 170);
-        doc.text(resLines, 20, currentY);
-        currentY += (resLines.length * 5) + 10;
-      }
-
-      // Parts Table
-      if (partsUsed.length > 0) {
-        doc.setFontSize(11);
-        doc.text('Materiais', 20, currentY);
-        currentY += 2;
-        
-        const partsBody = partsUsed.map(p => [
-          p.reference, 
-          p.name, 
-          p.quantity.toString(), 
-          `${p.price.toFixed(2)}€`, 
-          `${(p.price * p.quantity).toFixed(2)}€`
-        ]);
-
-        autoTable(doc, {
-          startY: currentY,
-          head: [['Ref', 'Designação', 'Qtd', 'Preço Unit.', 'Total']],
-          body: partsBody,
-          theme: 'striped',
-          headStyles: { fillColor: [66, 66, 66] }
-        });
-        // @ts-ignore
-        currentY = doc.lastAutoTable.finalY + 10;
-      }
-
-      // Time Table
-      if (timeEntries.length > 0) {
-          doc.setFontSize(11);
-          doc.text('Registo de Tempos', 20, currentY);
-          currentY += 2;
-
-          const timeBody = timeEntries.map(t => [
-              new Date(t.start_time).toLocaleDateString(),
-              new Date(t.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-              t.end_time ? new Date(t.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-',
-              t.duration_minutes ? `${t.duration_minutes} min` : '-'
-          ]);
-
-          autoTable(doc, {
-              startY: currentY,
-              head: [['Data', 'Início', 'Fim', 'Duração']],
-              body: timeBody,
-              theme: 'plain',
-              styles: { fontSize: 9 }
-          });
-          // @ts-ignore
-          currentY = doc.lastAutoTable.finalY + 10;
-      }
-
-      // Totals
-      const totalParts = partsUsed.reduce((acc, p) => acc + (p.price * p.quantity), 0);
-      
-      doc.setFontSize(10);
-      doc.text(`Total Peças: ${totalParts.toFixed(2)}€`, 140, currentY);
-      doc.text(`Total Horas: ${totalHours}h`, 140, currentY + 5);
-
-      // Signature
-      currentY += 20;
-      if (currentY > 250) {
-          doc.addPage();
-          currentY = 20;
-      }
-
-      if (signature) {
-          doc.text('Assinatura do Cliente:', 20, currentY);
-          try {
-              doc.addImage(signature, 'PNG', 20, currentY + 5, 60, 30);
-          } catch (e) {
-              doc.text('(Erro ao carregar imagem)', 20, currentY + 15);
-          }
-      } else {
-          doc.text('Assinatura não recolhida.', 20, currentY);
-      }
-
-      // Footer
-      const pageCount = doc.getNumberOfPages();
-      for(let i = 1; i <= pageCount; i++) {
-          doc.setPage(i);
-          doc.setFontSize(8);
-          doc.setTextColor(150);
-          doc.text(`Página ${i} de ${pageCount} - Gerado por GestãoOS`, 100, 290, { align: 'center' });
-      }
-
-      doc.save(`Relatorio_${os.code}.pdf`);
-    };
 
     // Company Header
     doc.setFillColor(240, 240, 240);
     doc.rect(0, 0, 210, 40, 'F');
+    doc.setFontSize(22);
+    doc.setTextColor(40, 40, 40);
+    doc.text('Real Frio', 20, 20);
+    doc.setFontSize(10);
+    doc.text('Relatório de Serviço Técnico', 20, 28);
     
-    // Add logo
-    if (companyLogo) {
-      const img = new Image();
-      img.src = companyLogo;
-      img.onload = () => {
-        doc.addImage(img, 'PNG', 15, 10, 30, 12); // Adjust position and size as needed
-        doc.setFontSize(10);
-        doc.setTextColor(40, 40, 40);
-        doc.text('Relatório de Serviço Técnico', 15, 28);
-        finalizePdf();
-      };
-      img.onerror = () => {
-        console.warn("Failed to load company logo for PDF. Proceeding without it.");
-        doc.setFontSize(22);
-        doc.setTextColor(40, 40, 40);
-        doc.text('Hotelaria Assist', 20, 20);
-        doc.setFontSize(10);
-        doc.text('Relatório de Serviço Técnico', 20, 28);
-        finalizePdf();
-      };
-    } else {
-      doc.setFontSize(22);
-      doc.setTextColor(40, 40, 40);
-      doc.text('Hotelaria Assist', 20, 20);
+    // OS Code
+    doc.setFontSize(16);
+    doc.text(os.code, 150, 20);
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(new Date().toLocaleDateString(), 150, 26);
+
+    // Client Info
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.text('Cliente', 20, 50);
+    doc.setLineWidth(0.5);
+    doc.line(20, 52, 190, 52);
+    
+    doc.setFontSize(10);
+    doc.text(`Nome: ${os.client?.name || ''}`, 20, 60);
+    doc.text(`Morada: ${os.client?.address || ''}`, 20, 66);
+    doc.text(`Contacto: ${os.client?.contact_person || ''} (${os.client?.phone || ''})`, 20, 72);
+
+    // Equipment Info
+    doc.setFontSize(12);
+    doc.text('Equipamento', 110, 50);
+    doc.line(110, 52, 190, 52); // Only partial line visual
+    
+    doc.setFontSize(10);
+    doc.text(`Tipo: ${os.equipment?.type || ''}`, 110, 60);
+    doc.text(`Marca/Modelo: ${os.equipment?.brand || ''} ${os.equipment?.model || ''}`, 110, 66);
+    doc.text(`Nº Série: ${os.equipment?.serial_number || ''}`, 110, 72);
+
+    let currentY = 85;
+
+    // Description
+    doc.setFontSize(11);
+    doc.setFillColor(245, 245, 245);
+    doc.rect(20, currentY, 170, 8, 'F');
+    doc.text('Problema Reportado', 22, currentY + 6);
+    currentY += 12;
+    doc.setFontSize(10);
+    const descLines = doc.splitTextToSize(os.description, 170);
+    doc.text(descLines, 20, currentY);
+    currentY += (descLines.length * 5) + 5;
+
+    // Resolution
+    if (notes) {
+      doc.setFontSize(11);
+      doc.setFillColor(245, 245, 245);
+      doc.rect(20, currentY, 170, 8, 'F');
+      doc.text('Relatório Técnico', 22, currentY + 6);
+      currentY += 12;
       doc.setFontSize(10);
-      doc.text('Relatório de Serviço Técnico', 20, 28);
-      finalizePdf();
+      const resLines = doc.splitTextToSize(notes, 170);
+      doc.text(resLines, 20, currentY);
+      currentY += (resLines.length * 5) + 10;
     }
+
+    // Parts Table
+    if (partsUsed.length > 0) {
+      doc.setFontSize(11);
+      doc.text('Materiais', 20, currentY);
+      currentY += 2;
+      
+      const partsBody = partsUsed.map(p => [
+        p.reference, 
+        p.name, 
+        p.quantity.toString(), 
+        `${p.price.toFixed(2)}€`, 
+        `${(p.price * p.quantity).toFixed(2)}€`
+      ]);
+
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Ref', 'Designação', 'Qtd', 'Preço Unit.', 'Total']],
+        body: partsBody,
+        theme: 'striped',
+        headStyles: { fillColor: [66, 66, 66] }
+      });
+      // @ts-ignore
+      currentY = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Time Table
+    if (timeEntries.length > 0) {
+        doc.setFontSize(11);
+        doc.text('Registo de Tempos', 20, currentY);
+        currentY += 2;
+
+        const timeBody = timeEntries.map(t => [
+            new Date(t.start_time).toLocaleDateString(),
+            new Date(t.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+            t.end_time ? new Date(t.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-',
+            t.duration_minutes ? `${t.duration_minutes} min` : '-'
+        ]);
+
+        autoTable(doc, {
+            startY: currentY,
+            head: [['Data', 'Início', 'Fim', 'Duração']],
+            body: timeBody,
+            theme: 'plain',
+            styles: { fontSize: 9 }
+        });
+        // @ts-ignore
+        currentY = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Totals
+    const totalParts = partsUsed.reduce((acc, p) => acc + (p.price * p.quantity), 0);
+    
+    doc.setFontSize(10);
+    doc.text(`Total Peças: ${totalParts.toFixed(2)}€`, 140, currentY);
+    doc.text(`Total Horas: ${totalHours}h`, 140, currentY + 5);
+
+    // Signature
+    currentY += 20;
+    if (currentY > 250) {
+        doc.addPage();
+        currentY = 20;
+    }
+
+    if (signature) {
+        doc.text('Assinatura do Cliente:', 20, currentY);
+        try {
+            doc.addImage(signature, 'PNG', 20, currentY + 5, 60, 30);
+        } catch (e) {
+            doc.text('(Erro ao carregar imagem)', 20, currentY + 15);
+        }
+    } else {
+        doc.text('Assinatura não recolhida.', 20, currentY);
+    }
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for(let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Página ${i} de ${pageCount} - Gerado por Real Frio`, 100, 290, { align: 'center' });
+    }
+
+    doc.save(`Relatorio_${os.code}.pdf`);
   };
 
   // --- Handlers ---
 
   const handleUpdateStatus = async (newStatus: OSStatus) => {
+    
+    // Logic for Finish Validation
+    if (newStatus === OSStatus.CONCLUIDA) {
+       if (!notes || notes.trim() === '') {
+          alert("Por favor, preencha o relatório técnico antes de alterar para Concluída.");
+          setActiveTab('finalizar');
+          return;
+       }
+       if (!signature && !isDemo) {
+          if(!confirm("Não recolheu a assinatura do cliente. Deseja finalizar mesmo assim?")) return;
+       }
+    }
+
     setActionLoading(true);
     const prevStatus = os.status;
     const now = new Date().toISOString();
@@ -546,21 +666,24 @@ const ServiceOrderDetail: React.FC = () => {
     if (newStatus === OSStatus.CONCLUIDA) {
       updates.end_time = now;
       updates.resolution_notes = notes;
-      updates.internal_notes = internalNotes; // Save internal notes on finish
+      updates.internal_notes = internalNotes;
       updates.client_signature = signature || undefined;
-      updates.scheduled_date = os.scheduled_date; // Ensure scheduled date is saved
+      updates.scheduled_date = os.scheduled_date;
       
-      // Stop timer if running when finishing
       if (activeTimerEntry) {
          await handleStopTimer();
       }
     } else {
-        // Save internal notes on other status changes too, just in case
         updates.internal_notes = internalNotes;
     }
 
-    if (newStatus === OSStatus.PAUSA && activeTimerEntry) {
-      await handleStopTimer();
+    // If leaving INICIADA state to any paused/waiting state, we might want to stop timer?
+    // Let's only stop timer if explicitly cancelled or completed, or user manually stops it.
+    // However, if moving to 'Waiting Parts', logically timer should stop.
+    if (activeTimerEntry && newStatus !== OSStatus.INICIADA && newStatus !== OSStatus.CONCLUIDA) {
+       if (confirm("Deseja parar o cronómetro ao alterar o estado?")) {
+          await handleStopTimer();
+       }
     }
 
     setOs({ ...os, ...updates });
@@ -606,37 +729,7 @@ const ServiceOrderDetail: React.FC = () => {
     setActionLoading(false);
   };
 
-  const handleStartOS = () => handleUpdateStatus(OSStatus.INICIADA);
-  const handlePauseOS = () => handleUpdateStatus(OSStatus.PAUSA);
-  
-  const handleReopenOS = () => {
-    if (confirm("Tem a certeza que deseja reabrir esta Ordem de Serviço?")) {
-      handleUpdateStatus(OSStatus.INICIADA);
-    }
-  };
-
-  const handleInvoiceOS = () => {
-    if (confirm("Marcar esta OS como Faturada? Esta ação é irreversível pelo técnico.")) {
-      handleUpdateStatus(OSStatus.FATURADA);
-    }
-  };
-
-  const handleCancelOS = () => {
-    if (confirm("Tem a certeza que deseja CANCELAR esta Ordem de Serviço? Esta ação não pode ser desfeita.")) {
-      handleUpdateStatus(OSStatus.CANCELADA);
-    }
-  };
-
   const handleFinish = async () => {
-    if (!notes || notes.trim() === '') {
-      alert("Por favor, preencha o relatório técnico antes de finalizar.");
-      setActiveTab('finalizar');
-      return;
-    }
-    // Validation for date removed
-    if (!signature && !isDemo) {
-      if(!confirm("Não recolheu a assinatura do cliente. Deseja finalizar mesmo assim?")) return;
-    }
     await handleUpdateStatus(OSStatus.CONCLUIDA);
     alert('Ordem de Serviço Concluída com sucesso!');
   };
@@ -745,9 +838,9 @@ const ServiceOrderDetail: React.FC = () => {
     setIsGenerating(false);
   };
 
-  const isReadOnly = os.status === OSStatus.CONCLUIDA || os.status === OSStatus.FATURADA || os.status === OSStatus.CANCELADA;
+  const isReadOnly = os.status === OSStatus.CONCLUIDA || os.status === OSStatus.CANCELADA;
 
-  // Validation Check
+  // Validation Check - Modified to remove scheduled_date check
   const isFormValid = notes.trim().length > 0;
 
   return (
@@ -785,7 +878,7 @@ const ServiceOrderDetail: React.FC = () => {
       {/* Header with Sticky Actions */}
       <div className="bg-white shadow-md rounded-xl p-4 mb-6 sticky top-0 z-10 border-b border-gray-200 transition-all">
         <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-1">
              <button
                onClick={() => navigate(-1)}
                className="p-2 -ml-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
@@ -793,55 +886,35 @@ const ServiceOrderDetail: React.FC = () => {
              >
                <ArrowLeft size={24} />
              </button>
-             <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-gray-900">{os.code}</h1>
-                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${getStatusColor(os.status)}`}>
-                    {getStatusLabel(os.status)}
-                  </span>
+             <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-bold text-gray-900 mr-2">{os.code}</h1>
+                  
+                  {/* Status Dropdown */}
+                  <div className="relative inline-block">
+                    <select
+                      value={os.status}
+                      onChange={(e) => handleUpdateStatus(e.target.value as OSStatus)}
+                      disabled={actionLoading}
+                      className={`appearance-none pl-3 pr-8 py-1 rounded-full text-xs font-bold uppercase tracking-wide border cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 ${getStatusColor(os.status)}`}
+                    >
+                      {Object.values(OSStatus).map((status) => (
+                        <option key={status} value={status}>
+                          {getStatusLabel(status)}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={12} className="absolute right-2 top-1.5 pointer-events-none opacity-60" />
+                  </div>
+
                 </div>
-                <p className="text-gray-500 text-sm mt-1">
-                  {os.client?.name} - {os.equipment?.type}
-                  {os.store && <span className="ml-2 text-gray-400">({os.store.name})</span>}
-                </p>
+                <p className="text-gray-500 text-sm mt-1">{os.client?.name} - {os.equipment?.type}</p>
              </div>
           </div>
           
           <div className="flex gap-2 w-full md:w-auto flex-wrap justify-end">
             
-            {/* Start OS Button */}
-            {(os.status === OSStatus.POR_INICIAR || os.status === OSStatus.ATRIBUIDA || os.status === OSStatus.PAUSA) && !isReadOnly && (
-              <button 
-                onClick={handleStartOS}
-                disabled={actionLoading}
-                className="flex-1 md:flex-none flex items-center justify-center bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 shadow-sm transition-colors disabled:opacity-50"
-              >
-                {actionLoading ? 'A processar...' : <><Play size={18} className="mr-2" /> {os.status === OSStatus.PAUSA ? 'Retomar OS' : 'Iniciar OS'}</>}
-              </button>
-            )}
-
-            {/* Pause OS Button */}
-            {os.status === OSStatus.INICIADA && !isReadOnly && (
-              <button 
-                onClick={handlePauseOS}
-                className="flex-1 md:flex-none flex items-center justify-center bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
-              >
-                <Pause size={18} className="mr-2" /> Pausa
-              </button>
-            )}
-
-            {/* Finish OS Button */}
-            {(os.status === OSStatus.INICIADA || os.status === OSStatus.PAUSA || os.status === OSStatus.ATRIBUIDA) && !isReadOnly && (
-              <button 
-                onClick={() => setActiveTab('finalizar')}
-                className="flex-1 md:flex-none flex items-center justify-center bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                <CheckSquare size={18} className="mr-2" /> Finalizar
-              </button>
-            )}
-
-            {/* Download PDF Button */}
-            {(os.status === OSStatus.CONCLUIDA || os.status === OSStatus.FATURADA) && (
+            {(os.status === OSStatus.CONCLUIDA) && (
               <button 
                 onClick={handleDownloadPDF}
                 className="flex-1 md:flex-none flex items-center justify-center bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg font-medium hover:bg-gray-200 transition-colors"
@@ -851,50 +924,6 @@ const ServiceOrderDetail: React.FC = () => {
               </button>
             )}
 
-            {/* Reopen OS Button */}
-            {os.status === OSStatus.CONCLUIDA && (
-              <button 
-                onClick={handleReopenOS}
-                disabled={actionLoading}
-                className="flex-1 md:flex-none flex items-center justify-center border border-gray-300 text-gray-700 bg-white px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                <RotateCcw size={18} className="mr-2" /> Reabrir
-              </button>
-            )}
-
-            {/* Invoice OS Button */}
-            {os.status === OSStatus.CONCLUIDA && (
-              <button 
-                onClick={handleInvoiceOS}
-                disabled={actionLoading}
-                className="flex-1 md:flex-none flex items-center justify-center bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50"
-              >
-                <DollarSign size={18} className="mr-2" /> Faturar
-              </button>
-            )}
-
-            {/* Cancel OS Button */}
-            {!isReadOnly && os.status !== OSStatus.CANCELADA && (
-              <button 
-                onClick={handleCancelOS}
-                disabled={actionLoading}
-                className="flex-1 md:flex-none flex items-center justify-center bg-red-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-600 transition-colors disabled:opacity-50"
-              >
-                <Ban size={18} className="mr-2" /> Cancelar
-              </button>
-            )}
-
-            {/* Faturada / Cancelada Display */}
-            {os.status === OSStatus.FATURADA && (
-               <div className="flex items-center text-gray-700 font-bold px-4 py-2 bg-gray-100 rounded-lg border border-gray-200">
-                 <FileCheck size={18} className="mr-2" /> Faturada
-               </div>
-            )}
-            {os.status === OSStatus.CANCELADA && (
-               <div className="flex items-center text-red-700 font-bold px-4 py-2 bg-red-50 rounded-lg border border-red-200">
-                 <Ban size={18} className="mr-2" /> Cancelada
-               </div>
-            )}
           </div>
         </div>
       </div>
@@ -930,22 +959,48 @@ const ServiceOrderDetail: React.FC = () => {
              <div className="space-y-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
                   <h3 className="font-semibold text-gray-900 flex items-center"><Calendar size={18} className="mr-2"/> Agendamento</h3>
-                   {/* Date Field Moved Here */}
-                  <div className="">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Data Prevista / Agendada</label>
-                    <div className="relative max-w-sm">
-                      <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                      <input
-                        type="date"
-                        value={os.scheduled_date ? os.scheduled_date.split('T')[0] : ''}
-                        onChange={(e) => setOs({...os, scheduled_date: e.target.value})}
-                        readOnly={isReadOnly}
-                        disabled={isReadOnly}
-                        className={`
-                          w-full pl-10 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border-gray-300 p-2 text-sm
-                        `}
-                      />
-                    </div>
+                   {/* Data e Hora Prevista */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Data Prevista</label>
+                          <div className="relative">
+                              <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                              <input
+                                  type="date"
+                                  value={os.scheduled_date ? (os.scheduled_date.includes('T') ? os.scheduled_date.split('T')[0] : os.scheduled_date) : ''}
+                                  onChange={(e) => {
+                                      const newDate = e.target.value;
+                                      const currentTime = (os.scheduled_date && os.scheduled_date.includes('T')) 
+                                          ? os.scheduled_date.split('T')[1].substring(0, 5) 
+                                          : '09:00'; // Default time
+                                      setOs({ ...os, scheduled_date: `${newDate}T${currentTime}:00` });
+                                  }}
+                                  readOnly={isReadOnly}
+                                  disabled={isReadOnly}
+                                  className="w-full pl-10 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border-gray-300 p-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                              />
+                          </div>
+                      </div>
+                      <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Hora Prevista</label>
+                          <div className="relative">
+                              <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                              <input
+                                  type="time"
+                                  value={(os.scheduled_date && os.scheduled_date.includes('T')) ? os.scheduled_date.split('T')[1].substring(0, 5) : ''}
+                                  onChange={(e) => {
+                                      const newTime = e.target.value;
+                                      const currentDate = os.scheduled_date 
+                                          ? (os.scheduled_date.includes('T') ? os.scheduled_date.split('T')[0] : os.scheduled_date) 
+                                          : new Date().toISOString().split('T')[0]; // Default date today
+                                      setOs({ ...os, scheduled_date: `${currentDate}T${newTime}:00` });
+                                  }}
+                                  readOnly={isReadOnly}
+                                  disabled={isReadOnly}
+                                  className="w-full pl-10 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border-gray-300 p-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                              />
+                          </div>
+                      </div>
                   </div>
                 </div>
 
@@ -968,12 +1023,6 @@ const ServiceOrderDetail: React.FC = () => {
                         <span className="text-gray-500">Localização</span> 
                         <span className="font-medium text-right">{os.client?.address}</span>
                      </div>
-                     {os.store && (
-                       <div className="flex justify-between border-t border-gray-100 pt-3 mt-3">
-                          <span className="text-gray-500">Loja</span> 
-                          <span className="font-medium text-right">{os.store.name}</span>
-                       </div>
-                     )}
                    </div>
                  </div>
              </div>
@@ -1324,19 +1373,7 @@ const ServiceOrderDetail: React.FC = () => {
             
             {os.status === OSStatus.CONCLUIDA && (
               <div className="text-center p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 font-medium">
-                Esta Ordem de Serviço foi concluída. Pode agora emitir a fatura.
-              </div>
-            )}
-            
-            {os.status === OSStatus.FATURADA && (
-              <div className="text-center p-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 font-medium">
-                Esta Ordem de Serviço já foi faturada e arquivada.
-              </div>
-            )}
-
-            {os.status === OSStatus.CANCELADA && (
-              <div className="text-center p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 font-medium">
-                Esta Ordem de Serviço foi cancelada.
+                Esta Ordem de Serviço foi concluída.
               </div>
             )}
           </div>

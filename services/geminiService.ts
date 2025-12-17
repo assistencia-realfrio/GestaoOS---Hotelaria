@@ -1,34 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-const getEnv = (key: string) => {
-  try {
-    // @ts-ignore
-    if (typeof process !== 'undefined' && process.env) {
-      // @ts-ignore
-      return process.env[key];
-    }
-    // @ts-ignore
-    if (typeof import.meta !== 'undefined' && import.meta.env) {
-      // @ts-ignore
-      return import.meta.env[key] || import.meta.env[`VITE_${key}`];
-    }
-  } catch (e) {
-    return '';
-  }
-  return '';
-};
-
-const apiKey = getEnv('API_KEY');
-
-// Instanciação segura
-let ai: GoogleGenAI | null = null;
-try {
-  if (apiKey) {
-    ai = new GoogleGenAI({ apiKey });
-  }
-} catch (e) {
-  console.error("Erro ao inicializar GoogleGenAI", e);
-}
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const generateOSReportSummary = async (
   description: string,
@@ -36,8 +8,6 @@ export const generateOSReportSummary = async (
   parts: string[],
   duration: string
 ): Promise<string> => {
-  if (!ai || !apiKey) return "API Key de IA não configurada ou inválida.";
-
   try {
     const prompt = `
       Atua como um assistente administrativo técnico sénior.

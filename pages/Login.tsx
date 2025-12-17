@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { Lock, Mail, ServerOff } from 'lucide-react';
+import BrandLogo from '../components/BrandLogo';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -42,9 +43,9 @@ const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">GestãoOS Hotelaria</h2>
-        <p className="mt-2 text-center text-sm text-gray-600">Aceda à sua conta</p>
+      <div className="sm:mx-auto sm:w-full sm:max-w-md flex flex-col items-center">
+        <BrandLogo variant="dark" size="xl" className="mb-6" />
+        <h2 className="text-center text-sm font-medium text-gray-500 uppercase tracking-widest mt-2">Área Técnica</h2>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">

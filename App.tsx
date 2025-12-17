@@ -9,11 +9,8 @@ import ServiceOrderDetail from './pages/ServiceOrderDetail';
 import NewServiceOrder from './pages/NewServiceOrder';
 import Clients from './pages/Clients';
 import ClientDetail from './pages/ClientDetail';
-import NewClient from './pages/NewClient';
-import EditClient from './pages/EditClient';
 import Equipments from './pages/Equipments';
-import NewEquipment from './pages/NewEquipment';
-import EditEquipment from './pages/EditEquipment'; // Import the new component
+import Users from './pages/Users';
 import Profile from './pages/Profile';
 import { UserRole } from './types';
 
@@ -39,7 +36,6 @@ function App() {
       if (supabaseSession) {
         setSession(supabaseSession);
         // In a real app, fetch role from 'profiles' table here using supabaseSession.user.id
-        // For now, we'll keep it as TECNICO for simplicity in this context.
         setRole(UserRole.TECNICO); 
       }
       
@@ -76,17 +72,11 @@ function App() {
         <Route path="/os/new" element={session ? <Layout userRole={role}><NewServiceOrder /></Layout> : <Navigate to="/login" />} />
         <Route path="/os/:id" element={session ? <Layout userRole={role}><ServiceOrderDetail /></Layout> : <Navigate to="/login" />} />
         
-        {/* Client Routes */}
+        {/* New Routes */}
         <Route path="/clients" element={session ? <Layout userRole={role}><Clients /></Layout> : <Navigate to="/login" />} />
-        <Route path="/clients/new" element={session ? <Layout userRole={role}><NewClient /></Layout> : <Navigate to="/login" />} />
         <Route path="/clients/:id" element={session ? <Layout userRole={role}><ClientDetail /></Layout> : <Navigate to="/login" />} />
-        <Route path="/clients/:id/edit" element={session ? <Layout userRole={role}><EditClient /></Layout> : <Navigate to="/login" />} />
-        <Route path="/clients/:clientId/equipments/new" element={session ? <Layout userRole={role}><NewEquipment /></Layout> : <Navigate to="/login" />} />
-        
-        {/* Equipment Routes */}
         <Route path="/equipments" element={session ? <Layout userRole={role}><Equipments /></Layout> : <Navigate to="/login" />} />
-        <Route path="/equipments/:id/edit" element={session ? <Layout userRole={role}><EditEquipment /></Layout> : <Navigate to="/login" />} /> {/* New Edit Equipment Route */}
-
+        <Route path="/users" element={session ? <Layout userRole={role}><Users /></Layout> : <Navigate to="/login" />} />
         <Route path="/profile" element={session ? <Layout userRole={role}><Profile /></Layout> : <Navigate to="/login" />} />
         
         <Route path="*" element={<Navigate to="/" />} />

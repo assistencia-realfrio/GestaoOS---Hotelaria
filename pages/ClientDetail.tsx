@@ -1,35 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History, ReceiptText, Edit, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
+import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History } from 'lucide-react';
 import { supabase } from '../supabaseClient';
-import { Client, Equipment, ServiceOrder, OSStatus, OSType, Store, ClientType } from '../types';
+import { Client, Equipment, ServiceOrder, OSStatus, OSType } from '../types';
+import OSStatusBadge from '../components/OSStatusBadge';
 
 // Mock Data
-const MOCK_STORES: Store[] = [
-  { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'CALDAS DA RAINHA', short_code: 'CR', address: 'Rua Principal, 10, Caldas da Rainha', phone: '262123456', email: 'caldas@gestaos.pt' },
-  { id: 'f0e9d8c7-b6a5-4321-fedc-ba9876543210', name: 'PORTO DE MÓS', short_code: 'PM', address: 'Avenida Central, 20, Porto de Mós', phone: '244987654', email: 'portodemos@gestaos.pt' },
-];
-
 const MOCK_CLIENT: Client = { 
-  id: '1', name: 'Hotel Baía Azul', type: ClientType.HOTEL, address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@baiaazul.pt', contact_person: 'Sr. Silva', notes: 'Cliente preferencial. Acesso pelas traseiras.',
-  store_id: MOCK_STORES[0].id, store: MOCK_STORES[0],
-  billing_name: 'Hotel Baía Azul, Lda.'
+  id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@baiaazul.pt', contact_person: 'Sr. Silva', notes: 'Cliente preferencial. Acesso pelas traseiras.' 
 };
 
 const MOCK_EQUIPMENTS: Equipment[] = [
-  { id: 'eq-1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45CNE', serial_number: 'L00543', status: 'ativo', store_id: MOCK_STORES[0].id },
-  { id: 'eq-2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi Pro', serial_number: 'E112233', status: 'em_reparacao', store_id: MOCK_STORES[0].id },
+  { id: 'eq-1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45CNE', serial_number: 'L00543', status: 'ativo' },
+  { id: 'eq-2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi Pro', serial_number: 'E112233', status: 'em_reparacao' },
 ];
 
 const MOCK_HISTORY: ServiceOrder[] = [
-  { id: '1', code: 'CR-20230915-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.CONCLUIDA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15', store_id: MOCK_STORES[0].id },
-  { id: '2', code: 'CR-20230910-002', client_id: '1', type: OSType.MANUTENCAO, status: OSStatus.INICIADA, description: 'Manutenção preventiva', priority: 'media', created_at: '2023-09-10', store_id: MOCK_STORES[0].id },
-  { id: '3', code: 'CR-20230905-003', client_id: '1', type: OSType.INSTALACAO, status: OSStatus.POR_INICIAR, description: 'Instalação de novo equipamento', priority: 'baixa', created_at: '2023-09-05', store_id: MOCK_STORES[0].id },
+  { id: '1', code: 'OS-2023-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.CONCLUIDA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15' },
+  { id: '2', code: 'OS-2023-002', client_id: '1', type: OSType.MANUTENCAO, status: OSStatus.AGUARDA_PECAS, description: 'Revisão semestral', priority: 'media', created_at: '2023-10-20' },
 ];
 
 const ClientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
   const [equipments, setEquipments] = useState<Equipment[]>([]);
   const [history, setHistory] = useState<ServiceOrder[]>([]);
@@ -49,7 +41,7 @@ const ClientDetail: React.FC = () => {
 
       try {
         // Fetch Client
-        const { data: clientData } = await supabase.from('clients').select(`*, store:stores(name, short_code)`).eq('id', id).single();
+        const { data: clientData } = await supabase.from('clients').select('*').eq('id', id).single();
         if (clientData) setClient(clientData);
 
         // Fetch Equipment
@@ -70,60 +62,6 @@ const ClientDetail: React.FC = () => {
     fetchData();
   }, [id, isDemo]);
 
-  const handleDeleteClient = async () => {
-    if (!confirm("Tem a certeza que deseja apagar este cliente? Esta ação é irreversível e apagará todos os equipamentos e ordens de serviço associados.")) {
-      return;
-    }
-
-    if (isDemo) {
-      alert("Cliente apagado com sucesso! (Modo Demo)");
-      navigate('/clients');
-      return;
-    }
-
-    try {
-      // First, delete related equipments
-      const { error: equipmentError } = await supabase.from('equipments').delete().eq('client_id', id);
-      if (equipmentError) throw equipmentError;
-
-      // Then, delete related service orders
-      const { error: osError } = await supabase.from('service_orders').delete().eq('client_id', id);
-      if (osError) throw osError;
-
-      // Finally, delete the client
-      const { error: clientError } = await supabase.from('clients').delete().eq('id', id);
-      if (clientError) throw clientError;
-
-      alert("Cliente apagado com sucesso!");
-      navigate('/clients');
-    } catch (error) {
-      console.error("Error deleting client:", error);
-      alert("Erro ao apagar cliente. Verifique a consola para mais detalhes.");
-    }
-  };
-
-  const handleDeleteEquipment = async (equipmentId: string) => {
-    if (!confirm("Tem a certeza que deseja apagar este equipamento? Esta ação é irreversível.")) {
-      return;
-    }
-
-    if (isDemo) {
-      setEquipments(equipments.filter(eq => eq.id !== equipmentId));
-      alert("Equipamento apagado com sucesso! (Modo Demo)");
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('equipments').delete().eq('id', equipmentId);
-      if (error) throw error;
-      setEquipments(equipments.filter(eq => eq.id !== equipmentId));
-      alert("Equipamento apagado com sucesso!");
-    } catch (error) {
-      console.error("Error deleting equipment:", error);
-      alert("Erro ao apagar equipamento.");
-    }
-  };
-
   if (loading) return <div className="p-8 text-center">A carregar...</div>;
   if (!client) return <div className="p-8 text-center">Cliente não encontrado.</div>;
 
@@ -134,12 +72,7 @@ const ClientDetail: React.FC = () => {
         <div className="bg-slate-900 px-6 py-4">
           <div className="flex justify-between items-center">
              <h1 className="text-2xl font-bold text-white">{client.name}</h1>
-             <div className="flex items-center gap-2">
-               <span className="bg-blue-600 text-white text-xs font-semibold px-2.5 py-0.5 rounded">{client.type}</span>
-               {client.store && (
-                 <span className="bg-gray-200 text-gray-800 text-xs font-semibold px-2.5 py-0.5 rounded">{client.store.name}</span>
-               )}
-             </div>
+             <span className="bg-blue-600 text-white text-xs font-semibold px-2.5 py-0.5 rounded">{client.type}</span>
           </div>
         </div>
         <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -148,12 +81,6 @@ const ClientDetail: React.FC = () => {
                <User className="w-5 h-5 mr-3 text-gray-400" />
                <span className="font-medium text-gray-900">{client.contact_person}</span>
              </div>
-             {client.billing_name && (
-               <div className="flex items-center text-gray-600">
-                 <ReceiptText className="w-5 h-5 mr-3 text-gray-400" />
-                 <span className="font-medium text-gray-900">{client.billing_name}</span>
-               </div>
-             )}
              <div className="flex items-center text-gray-600">
                <Phone className="w-5 h-5 mr-3 text-gray-400" />
                <span>{client.phone}</span>
@@ -173,22 +100,6 @@ const ClientDetail: React.FC = () => {
                <p className="text-sm text-gray-700">{client.notes || 'Sem notas registadas.'}</p>
              </div>
           </div>
-        </div>
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button
-            onClick={handleDeleteClient}
-            className="flex items-center bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 shadow-sm transition-colors"
-          >
-            <Trash2 size={18} className="mr-2" />
-            Apagar Cliente
-          </button>
-          <button
-            onClick={() => navigate(`/clients/${client.id}/edit`)}
-            className="flex items-center bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm transition-colors"
-          >
-            <Edit size={18} className="mr-2" />
-            Editar Cliente
-          </button>
         </div>
       </div>
 
@@ -219,11 +130,8 @@ const ClientDetail: React.FC = () => {
           {activeTab === 'equipments' && (
             <div className="space-y-4">
               <div className="flex justify-end">
-                <button 
-                  onClick={() => navigate(`/clients/${client.id}/equipments/new`)}
-                  className="flex items-center text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors"
-                >
-                  <Plus size={16} className="mr-1" /> Adicionar Equipamento
+                <button className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
+                  + Adicionar Equipamento
                 </button>
               </div>
               {equipments.length === 0 ? (
@@ -241,26 +149,6 @@ const ClientDetail: React.FC = () => {
                        <p className="text-sm text-gray-600">Marca: <span className="font-medium text-gray-800">{eq.brand}</span></p>
                        <p className="text-sm text-gray-600">Modelo: <span className="font-medium text-gray-800">{eq.model}</span></p>
                        <p className="text-xs text-gray-500 mt-2">S/N: {eq.serial_number}</p>
-                       <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end gap-2">
-                         <button
-                           onClick={(e) => {
-                             e.preventDefault(); // Prevent navigating to client detail
-                             handleDeleteEquipment(eq.id);
-                           }}
-                           className="flex items-center text-xs text-red-600 hover:text-red-800 font-medium"
-                         >
-                           <Trash2 size={14} className="mr-1" /> Apagar
-                         </button>
-                         <button
-                           onClick={(e) => {
-                             e.preventDefault(); // Prevent navigating to client detail
-                             navigate(`/equipments/${eq.id}/edit`);
-                           }}
-                           className="flex items-center text-xs text-blue-600 hover:text-blue-800 font-medium"
-                         >
-                           <Edit size={14} className="mr-1" /> Editar
-                         </button>
-                       </div>
                     </div>
                   ))}
                 </div>
@@ -287,14 +175,7 @@ const ClientDetail: React.FC = () => {
                         <td className="px-4 py-3 text-sm font-medium text-blue-600">{os.code}</td>
                         <td className="px-4 py-3 text-sm text-gray-500 capitalize">{os.type}</td>
                         <td className="px-4 py-3">
-                           <span className={`px-2 text-xs leading-5 font-semibold rounded-full 
-                             ${os.status === OSStatus.CONCLUIDA ? 'bg-green-100 text-green-800' : 
-                               os.status === OSStatus.INICIADA ? 'bg-yellow-100 text-yellow-800' : 
-                               os.status === OSStatus.POR_INICIAR ? 'bg-blue-100 text-blue-800' :
-                               os.status === OSStatus.CANCELADA ? 'bg-red-100 text-red-800' :
-                               'bg-gray-100 text-gray-800'}`}>
-                             {os.status.replace('_', ' ')}
-                           </span>
+                           <OSStatusBadge status={os.status} />
                         </td>
                         <td className="px-4 py-3 text-right text-sm">
                           <Link to={`/os/${os.id}`} className="text-blue-600 hover:text-blue-900">Ver</Link>

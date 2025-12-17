@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { User, Mail, Shield, LogOut, Briefcase, Clock, CheckCircle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import { UserRole, Profile as UserProfileType } from '../types'; // Renomear Profile para evitar conflito
+import { UserRole } from '../types';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
-  const [userProfile, setUserProfile] = useState<UserProfileType | null>(null); // Usar UserProfileType
+  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const isDemo = localStorage.getItem('demo_session') === 'true';
 
@@ -16,44 +16,19 @@ const Profile: React.FC = () => {
 
   const fetchProfile = async () => {
     if (isDemo) {
-      setUserProfile({
-        id: 'demo-user-123',
+      setUser({
         email: 'demo@tecnico.pt',
-        full_name: 'Técnico Demo',
         role: UserRole.TECNICO,
-        avatar_url: null,
-        store_id: 'demo-store-id'
+        last_sign_in: new Date().toISOString(),
+        id: 'demo-user-123'
       });
       setLoading(false);
       return;
     }
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) throw profileError;
-
-        setUserProfile({
-          ...profileData,
-          email: user.email || profileData.email, // Fallback to auth email if profile email is null
-          role: profileData.role as UserRole, // Ensure role is of type UserRole
-        });
-      } else {
-        navigate('/login'); // Redirect to login if no user session
-      }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
-      alert("Erro ao carregar perfil. Tente novamente.");
-      navigate('/login'); // Redirect on error
-    } finally {
-      setLoading(false);
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+    setLoading(false);
   };
 
   const handleLogout = async () => {
@@ -82,14 +57,14 @@ const Profile: React.FC = () => {
           </div>
           
           <div className="mt-14 space-y-1">
-            <h2 className="text-xl font-bold text-gray-900">{isDemo ? 'Técnico Demo' : userProfile?.full_name || userProfile?.email?.split('@')[0]}</h2>
+            <h2 className="text-xl font-bold text-gray-900">{isDemo ? 'Técnico Demo' : user?.email?.split('@')[0]}</h2>
             <div className="flex items-center text-sm text-gray-500">
                <Mail size={14} className="mr-1" />
-               {userProfile?.email}
+               {user?.email}
             </div>
             <div className="flex items-center text-sm text-blue-600 font-medium">
                <Shield size={14} className="mr-1" />
-               {isDemo ? 'Técnico' : userProfile?.role || 'Técnico'}
+               {isDemo ? 'Técnico' : user?.role || 'Técnico'}
             </div>
           </div>
 
@@ -115,7 +90,7 @@ const Profile: React.FC = () => {
             <Briefcase size={18} className="mr-3 text-gray-400" />
             <span>Empresa</span>
           </div>
-          <span className="font-medium">Hotelaria Assist Lda.</span>
+          <span className="font-medium">Real Frio</span>
         </div>
 
         <div className="flex items-center justify-between py-3 border-b border-gray-100">
@@ -124,8 +99,7 @@ const Profile: React.FC = () => {
             <span>Último Acesso</span>
           </div>
           <span className="text-sm text-gray-500">
-             {/* Display last sign in from Supabase auth user if available, otherwise current time */}
-             {isDemo ? 'Agora' : (userProfile?.id ? new Date().toLocaleString() : 'N/A')}
+             {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Agora'}
           </span>
         </div>
         

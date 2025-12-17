@@ -1,3 +1,4 @@
+
 export enum UserRole {
   ADMIN = 'admin',
   BACKOFFICE = 'backoffice',
@@ -6,15 +7,12 @@ export enum UserRole {
 
 export enum OSStatus {
   POR_INICIAR = 'por_iniciar',
-  ATRIBUIDA = 'atribuida',
   INICIADA = 'iniciada',
-  PAUSA = 'pausa',
   PARA_ORCAMENTO = 'para_orcamento',
   ORCAMENTO_ENVIADO = 'orcamento_enviado',
   AGUARDA_PECAS = 'aguarda_pecas',
   PECAS_RECEBIDAS = 'pecas_recebidas',
   CONCLUIDA = 'concluida',
-  FATURADA = 'faturada',
   CANCELADA = 'cancelada'
 }
 
@@ -25,36 +23,15 @@ export enum OSType {
   REVISAO = 'revisao'
 }
 
-export enum ClientType { // Novo enum para tipos de cliente
-  HOTEL = 'Hotel',
-  RESTAURANTE = 'Restaurante',
-  CAFETERIA = 'Cafetaria',
-  LAVANDARIA = 'Lavandaria',
-  SUPERMERCADO = 'Supermercado',
-  OUTRO = 'Outro'
-}
-
-export interface Store {
-  id: string;
-  name: string;
-  short_code: string; // Nova propriedade para o código curto da loja
-  address?: string;
-  phone?: string;
-  email?: string;
-}
-
 export interface Client {
   id: string;
   name: string;
-  type: ClientType; // Usar o novo enum ClientType
+  type: string;
   address: string;
   phone: string;
   email: string;
   contact_person: string;
   notes?: string;
-  store_id?: string; // New field
-  store?: Store; // New field for joined data
-  billing_name?: string; // Novo campo para o nome da faturação
 }
 
 export interface Equipment {
@@ -66,8 +43,6 @@ export interface Equipment {
   serial_number: string;
   install_date?: string;
   status: 'ativo' | 'inativo' | 'em_reparacao';
-  store_id?: string; // New field
-  store?: Store; // New field for joined data
 }
 
 export interface PartCatalogItem {
@@ -124,8 +99,6 @@ export interface ServiceOrder {
   client_signature?: string; // Base64 or URL
   client?: Client;
   equipment?: Equipment;
-  store_id?: string; // New field
-  store?: Store; // New field for joined data
 }
 
 export interface Profile {
@@ -134,5 +107,4 @@ export interface Profile {
   full_name: string;
   role: UserRole;
   avatar_url?: string;
-  store_id?: string; // New field for user's assigned store
 }
