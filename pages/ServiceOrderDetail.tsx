@@ -4,158 +4,21 @@ import { Play, Pause, CheckSquare, Camera, PenTool, Save, Wand2, Plus, Trash2, X
 import SignatureCanvas from '../components/SignatureCanvas';
 import { OSStatus, ServiceOrder, PartUsed, PartCatalogItem, OSPhoto, TimeEntry, OSType } from '../types';
 import { generateOSReportSummary } from '../services/geminiService';
-import { supabase } from '../supabaseClient';
+import { mockData } from '../services/mockData';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-
-// Mock Catalog Data (Keep as constant for simplicity in both modes)
-const MOCK_CATALOG: PartCatalogItem[] = [
-  { id: 'p1', name: 'Termostato Digital', reference: 'TERM-001', price: 45.50, stock: 10 },
-  { id: 'p2', name: 'Compressor 1/2HP', reference: 'COMP-12', price: 250.00, stock: 3 },
-  { id: 'p3', name: 'Gás Refrigerante R404A (kg)', reference: 'GAS-404', price: 80.00, stock: 50 },
-  { id: 'p4', name: 'Bomba de Água', reference: 'PUMP-H2O', price: 120.00, stock: 5 },
-  { id: 'p5', name: 'Vedante Porta', reference: 'VED-09', price: 35.00, stock: 15 },
-];
-
-// --- MOCK DATABASE FOR DEMO MODE ---
-const MOCK_DB: Record<string, ServiceOrder> = {
-  '1': {
-    id: '1',
-    code: 'OS-2023-001',
-    client_id: 'cli-1',
-    equipment_id: 'eq-1',
-    type: OSType.AVARIA,
-    status: OSStatus.INICIADA,
-    priority: 'alta',
-    description: 'Máquina de gelo parou de fabricar gelo. Compressor muito quente.',
-    created_at: '2023-10-10T09:00:00Z',
-    scheduled_date: '2023-10-10T14:00:00',
-    start_time: '2023-10-10T14:15:00',
-    client: {
-      id: 'cli-1',
-      name: 'Hotel Baía Azul',
-      address: 'Av. Marginal 123, Lisboa',
-      contact_person: 'Sr. Silva',
-      email: 'admin@baiaazul.pt',
-      phone: '912345678',
-      type: 'Hotel'
-    },
-    equipment: {
-      id: 'eq-1',
-      client_id: 'cli-1',
-      brand: 'Hoshizaki',
-      model: 'IM-45CNE',
-      serial_number: 'L00543',
-      type: 'Máquina de Gelo',
-      status: 'ativo'
-    }
-  },
-  '2': {
-    id: '2',
-    code: 'OS-2023-002',
-    client_id: 'cli-2',
-    equipment_id: 'eq-2',
-    type: OSType.MANUTENCAO,
-    status: OSStatus.AGUARDA_PECAS,
-    priority: 'media',
-    description: 'Limpeza preventiva da exaustão e verificação de filtros.',
-    created_at: '2023-10-11T14:30:00Z',
-    scheduled_date: '2023-10-12T10:00:00',
-    client: {
-      id: 'cli-2',
-      name: 'Restaurante O Pescador',
-      address: 'Rua do Porto 5, Setúbal',
-      contact_person: 'D. Maria',
-      email: 'pescador@rest.pt',
-      phone: '966554433',
-      type: 'Restaurante'
-    },
-    equipment: {
-      id: 'eq-2',
-      client_id: 'cli-2',
-      brand: 'Industrial',
-      model: 'X500',
-      serial_number: 'EX-9988',
-      type: 'Exaustão',
-      status: 'ativo'
-    }
-  },
-  '3': {
-    id: '3',
-    code: 'OS-2023-003',
-    client_id: 'cli-3',
-    equipment_id: 'eq-3',
-    type: OSType.INSTALACAO,
-    status: OSStatus.CONCLUIDA,
-    priority: 'media',
-    description: 'Instalação de novo Forno Convector Rational.',
-    created_at: '2023-10-09T10:00:00Z',
-    scheduled_date: '2023-10-09T09:00:00',
-    start_time: '2023-10-09T09:30:00',
-    end_time: '2023-10-09T12:30:00',
-    resolution_notes: 'Instalação efetuada com sucesso. Testes de temperatura ok.',
-    client: {
-      id: 'cli-3',
-      name: 'Pastelaria Central',
-      address: 'Praça da República, Coimbra',
-      contact_person: 'João Santos',
-      email: 'geral@central.pt',
-      phone: '239123123',
-      type: 'Pastelaria'
-    },
-    equipment: {
-      id: 'eq-3',
-      client_id: 'cli-3',
-      brand: 'Rational',
-      model: 'iCombi',
-      serial_number: 'RAT-2023-X',
-      type: 'Forno',
-      status: 'ativo'
-    }
-  },
-  '4': {
-    id: '4',
-    code: 'OS-2023-004',
-    client_id: 'cli-1',
-    equipment_id: 'eq-4',
-    type: OSType.REVISAO,
-    status: OSStatus.POR_INICIAR,
-    priority: 'baixa',
-    description: 'Revisão geral das câmaras frigoríficas antes da época alta.',
-    created_at: '2023-10-12T08:00:00Z',
-    scheduled_date: '2023-10-15T08:00:00',
-    client: {
-      id: 'cli-1',
-      name: 'Hotel Baía Azul',
-      address: 'Av. Marginal 123, Lisboa',
-      contact_person: 'Sr. Silva',
-      email: 'admin@baiaazul.pt',
-      phone: '912345678',
-      type: 'Hotel'
-    },
-    equipment: {
-      id: 'eq-4',
-      client_id: 'cli-1',
-      brand: 'FrioInd',
-      model: 'CF-20',
-      serial_number: 'CF-001',
-      type: 'Câmara Frigorífica',
-      status: 'ativo'
-    }
-  }
-};
 
 const ServiceOrderDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'info' | 'pecas' | 'fotos' | 'tempo' | 'finalizar'>('info');
-  const [isDemo, setIsDemo] = useState(false);
   
   // Data State
   const [os, setOs] = useState<ServiceOrder | null>(null);
   const [partsUsed, setPartsUsed] = useState<PartUsed[]>([]);
   const [photos, setPhotos] = useState<OSPhoto[]>([]);
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([]);
+  const [catalog, setCatalog] = useState<PartCatalogItem[]>([]);
   
   // Form State
   const [notes, setNotes] = useState('');
@@ -177,10 +40,17 @@ const ServiceOrderDetail: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    const checkDemo = localStorage.getItem('demo_session') === 'true';
-    setIsDemo(checkDemo);
-    fetchOSDetails(checkDemo);
+    fetchOSDetails();
   }, [id]);
+
+  useEffect(() => {
+    // Load catalog when modal is opened or component mounts
+    const loadCatalog = async () => {
+      const data = await mockData.getCatalog();
+      setCatalog(data);
+    };
+    loadCatalog();
+  }, []);
 
   // Timer Effect
   useEffect(() => {
@@ -203,111 +73,23 @@ const ServiceOrderDetail: React.FC = () => {
     };
   }, [activeTimerEntry]);
 
-  const fetchOSDetails = async (demoMode: boolean) => {
+  const fetchOSDetails = async () => {
     setLoading(true);
     
-    if (demoMode) {
-      // Use MOCK_DB instead of single hardcoded object
-      await new Promise(r => setTimeout(r, 500));
-      
-      const foundOS = id && MOCK_DB[id] ? MOCK_DB[id] : null;
-
-      if (foundOS) {
-        setOs(foundOS);
-        
-        // Mock specific data based on ID for better demo experience
-        if (foundOS.id === '1') { // Iniciada
-           setTimeEntries([{ 
-             id: 't1', os_id: '1', 
-             start_time: foundOS.start_time || new Date().toISOString(), 
-             end_time: null, 
-             description: 'Diagnóstico em curso' 
-           }]);
-           // Set active timer logic automatically
-           const active = { 
-             id: 't1', os_id: '1', 
-             start_time: foundOS.start_time || new Date().toISOString(), 
-             end_time: null, 
-             description: 'Diagnóstico em curso' 
-           };
-           setActiveTimerEntry(active as any);
-        } else if (foundOS.id === '3') { // Concluída
-           setTimeEntries([{ 
-             id: 't3', os_id: '3', 
-             start_time: foundOS.start_time || '', 
-             end_time: foundOS.end_time || '', 
-             duration_minutes: 180, 
-             description: 'Instalação completa' 
-           }]);
-           setNotes(foundOS.resolution_notes || '');
+    if (id) {
+        const osData = await mockData.getServiceOrderById(id);
+        if (osData) {
+            setOs(osData);
+            setNotes(osData.resolution_notes || '');
+            setInternalNotes(osData.internal_notes || '');
+            if (osData.client_signature) setSignature(osData.client_signature);
+            
+            // Fetch parts
+            const parts = await mockData.getOSParts(id);
+            setPartsUsed(parts);
         }
-
-        if (foundOS.resolution_notes) setNotes(foundOS.resolution_notes);
-        if (foundOS.internal_notes) setInternalNotes(foundOS.internal_notes);
-        
-      } else {
-        // Fallback for unknown ID in demo
-        setOs({
-          id: id || '999',
-          code: `OS-DEMO-${id}`,
-          client_id: 'cli-demo',
-          description: 'Ordem de serviço de demonstração.',
-          type: OSType.AVARIA,
-          status: OSStatus.POR_INICIAR,
-          priority: 'media',
-          created_at: new Date().toISOString(),
-          client: {
-             id: 'cli-demo', name: 'Cliente Demo', address: 'Rua Exemplo', 
-             phone: '000000000', email: 'demo@exemplo.com', type: 'Outro', contact_person: 'N/A'
-          },
-          equipment: {
-             id: 'eq-demo', client_id: 'cli-demo', type: 'Genérico', 
-             brand: 'Marca', model: 'Modelo', serial_number: '0000', status: 'ativo'
-          }
-        });
-      }
-      
-      setLoading(false);
-      return;
     }
-
-    try {
-      // 1. Fetch OS Header
-      const { data: osData, error: osError } = await supabase
-        .from('service_orders')
-        .select(`*, client:clients(*), equipment:equipments(*)`)
-        .eq('id', id)
-        .single();
-
-      if (osError) throw osError;
-      setOs(osData);
-      if (osData.resolution_notes) setNotes(osData.resolution_notes);
-      if (osData.internal_notes) setInternalNotes(osData.internal_notes);
-      if (osData.client_signature) setSignature(osData.client_signature);
-      
-      // 2. Fetch Parts
-      const { data: partsData } = await supabase.from('service_order_parts').select('*').eq('os_id', id);
-      if (partsData) setPartsUsed(partsData);
-
-      // 3. Fetch Photos
-      const { data: photosData } = await supabase.from('service_order_photos').select('*').eq('os_id', id);
-      if (photosData) setPhotos(photosData);
-
-      // 4. Fetch Time Entries
-      const { data: timeData } = await supabase.from('os_tempo').select('*').eq('os_id', id).order('start_time', { ascending: false });
-      if (timeData) {
-        setTimeEntries(timeData);
-        // Check for active timer
-        const active = timeData.find((t: TimeEntry) => !t.end_time);
-        if (active) setActiveTimerEntry(active);
-      }
-
-    } catch (error) {
-      console.error("Error fetching OS:", error);
-      alert("Erro ao carregar dados da OS.");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
 
   if (loading) return <div className="p-8 text-center text-gray-500">A carregar detalhes da OS...</div>;
@@ -351,75 +133,35 @@ const ServiceOrderDetail: React.FC = () => {
 
   // --- Time Tracking Handlers ---
   
-  const handleStartTimer = async () => {
+  const handleStartTimer = () => {
     if (activeTimerEntry) return;
 
     const newEntry: TimeEntry = {
-      id: isDemo ? Math.random().toString() : '', // Placeholder for demo
+      id: Math.random().toString(),
       os_id: os.id,
       start_time: new Date().toISOString(),
       end_time: null,
       description: 'Trabalho em execução'
     };
 
-    if (isDemo) {
-      setActiveTimerEntry(newEntry);
-      setTimeEntries([newEntry, ...timeEntries]);
-      handleUpdateStatus(OSStatus.INICIADA); // Auto update status
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.from('os_tempo').insert({
-        os_id: os.id,
-        start_time: newEntry.start_time,
-        description: newEntry.description
-      }).select().single();
-
-      if (error) throw error;
-      setActiveTimerEntry(data);
-      setTimeEntries([data, ...timeEntries]);
-      handleUpdateStatus(OSStatus.INICIADA);
-    } catch (e) {
-      console.error("Erro ao iniciar timer:", e);
-      alert("Erro ao iniciar contagem de tempo.");
-    }
+    setActiveTimerEntry(newEntry);
+    setTimeEntries([newEntry, ...timeEntries]);
+    handleUpdateStatus(OSStatus.INICIADA);
   };
 
-  const handleStopTimer = async () => {
+  const handleStopTimer = () => {
     if (!activeTimerEntry) return;
 
     const endTime = new Date().toISOString();
     const startTime = new Date(activeTimerEntry.start_time);
     const durationMinutes = Math.round((new Date(endTime).getTime() - startTime.getTime()) / 60000);
 
-    if (isDemo) {
-      const updatedEntry = { ...activeTimerEntry, end_time: endTime, duration_minutes: durationMinutes };
-      setActiveTimerEntry(null);
-      setTimeEntries(timeEntries.map(t => t.id === activeTimerEntry.id ? updatedEntry : t));
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('os_tempo').update({
-        end_time: endTime,
-        duration_minutes: durationMinutes
-      }).eq('id', activeTimerEntry.id);
-
-      if (error) throw error;
-      
-      // Refresh list
-      const { data } = await supabase.from('os_tempo').select('*').eq('os_id', os.id).order('start_time', { ascending: false });
-      if (data) setTimeEntries(data);
-      setActiveTimerEntry(null);
-
-    } catch (e) {
-      console.error("Erro ao parar timer:", e);
-      alert("Erro ao parar contagem de tempo.");
-    }
+    const updatedEntry = { ...activeTimerEntry, end_time: endTime, duration_minutes: durationMinutes };
+    setActiveTimerEntry(null);
+    setTimeEntries(timeEntries.map(t => t.id === activeTimerEntry.id ? updatedEntry : t));
   };
 
-  const handleManualTimeAdd = async (e: React.FormEvent) => {
+  const handleManualTimeAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!manualStart || !manualEnd) return;
 
@@ -433,65 +175,31 @@ const ServiceOrderDetail: React.FC = () => {
 
     const durationMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
 
-    if (isDemo) {
-      const newEntry: TimeEntry = {
-        id: Math.random().toString(),
-        os_id: os.id,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        duration_minutes: durationMinutes,
-        description: 'Registo manual'
-      };
-      setTimeEntries([newEntry, ...timeEntries]);
-      setManualStart('');
-      setManualEnd('');
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase.from('os_tempo').insert({
-        os_id: os.id,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        duration_minutes: durationMinutes,
-        description: 'Registo manual'
-      }).select().single();
-
-      if (error) throw error;
-      setTimeEntries([data, ...timeEntries]);
-      setManualStart('');
-      setManualEnd('');
-    } catch (e) {
-      console.error("Erro ao adicionar tempo:", e);
-      alert("Erro ao registar tempo.");
-    }
+    const newEntry: TimeEntry = {
+      id: Math.random().toString(),
+      os_id: os.id,
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+      duration_minutes: durationMinutes,
+      description: 'Registo manual'
+    };
+    setTimeEntries([newEntry, ...timeEntries]);
+    setManualStart('');
+    setManualEnd('');
   };
 
-  const handleDeleteTimeEntry = async (entryId: string) => {
+  const handleDeleteTimeEntry = (entryId: string) => {
     if (!confirm("Tem a certeza que deseja apagar este registo de tempo?")) return;
-
-    if (isDemo) {
-      setTimeEntries(timeEntries.filter(t => t.id !== entryId));
-      return;
-    }
-
-    try {
-      const { error } = await supabase.from('os_tempo').delete().eq('id', entryId);
-      if (error) throw error;
-      setTimeEntries(timeEntries.filter(t => t.id !== entryId));
-    } catch (e) {
-      alert("Erro ao apagar registo.");
-    }
+    setTimeEntries(timeEntries.filter(t => t.id !== entryId));
   };
 
   const totalMinutes = timeEntries.reduce((acc, curr) => acc + (curr.duration_minutes || 0), 0);
   const totalHours = (totalMinutes / 60).toFixed(1);
 
-  // --- PDF Generation ---
+  // --- PDF Generation (Same logic) ---
   const handleDownloadPDF = () => {
     const doc = new jsPDF();
 
-    // Company Header
     doc.setFillColor(240, 240, 240);
     doc.rect(0, 0, 210, 40, 'F');
     doc.setFontSize(22);
@@ -500,14 +208,12 @@ const ServiceOrderDetail: React.FC = () => {
     doc.setFontSize(10);
     doc.text('Relatório de Serviço Técnico', 20, 28);
     
-    // OS Code
     doc.setFontSize(16);
     doc.text(os.code, 150, 20);
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
     doc.text(new Date().toLocaleDateString(), 150, 26);
 
-    // Client Info
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(12);
     doc.text('Cliente', 20, 50);
@@ -517,21 +223,17 @@ const ServiceOrderDetail: React.FC = () => {
     doc.setFontSize(10);
     doc.text(`Nome: ${os.client?.name || ''}`, 20, 60);
     doc.text(`Morada: ${os.client?.address || ''}`, 20, 66);
-    doc.text(`Contacto: ${os.client?.contact_person || ''} (${os.client?.phone || ''})`, 20, 72);
 
-    // Equipment Info
     doc.setFontSize(12);
     doc.text('Equipamento', 110, 50);
-    doc.line(110, 52, 190, 52); // Only partial line visual
+    doc.line(110, 52, 190, 52); 
     
     doc.setFontSize(10);
     doc.text(`Tipo: ${os.equipment?.type || ''}`, 110, 60);
     doc.text(`Marca/Modelo: ${os.equipment?.brand || ''} ${os.equipment?.model || ''}`, 110, 66);
-    doc.text(`Nº Série: ${os.equipment?.serial_number || ''}`, 110, 72);
 
     let currentY = 85;
 
-    // Description
     doc.setFontSize(11);
     doc.setFillColor(245, 245, 245);
     doc.rect(20, currentY, 170, 8, 'F');
@@ -542,7 +244,6 @@ const ServiceOrderDetail: React.FC = () => {
     doc.text(descLines, 20, currentY);
     currentY += (descLines.length * 5) + 5;
 
-    // Resolution
     if (notes) {
       doc.setFontSize(11);
       doc.setFillColor(245, 245, 245);
@@ -555,7 +256,6 @@ const ServiceOrderDetail: React.FC = () => {
       currentY += (resLines.length * 5) + 10;
     }
 
-    // Parts Table
     if (partsUsed.length > 0) {
       doc.setFontSize(11);
       doc.text('Materiais', 20, currentY);
@@ -580,36 +280,11 @@ const ServiceOrderDetail: React.FC = () => {
       currentY = doc.lastAutoTable.finalY + 10;
     }
 
-    // Time Table
-    if (timeEntries.length > 0) {
-        doc.setFontSize(11);
-        doc.text('Registo de Tempos', 20, currentY);
-        currentY += 2;
-
-        const timeBody = timeEntries.map(t => [
-            new Date(t.start_time).toLocaleDateString(),
-            new Date(t.start_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-            t.end_time ? new Date(t.end_time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '-',
-            t.duration_minutes ? `${t.duration_minutes} min` : '-'
-        ]);
-
-        autoTable(doc, {
-            startY: currentY,
-            head: [['Data', 'Início', 'Fim', 'Duração']],
-            body: timeBody,
-            theme: 'plain',
-            styles: { fontSize: 9 }
-        });
-        // @ts-ignore
-        currentY = doc.lastAutoTable.finalY + 10;
-    }
-
     // Totals
     const totalParts = partsUsed.reduce((acc, p) => acc + (p.price * p.quantity), 0);
     
     doc.setFontSize(10);
     doc.text(`Total Peças: ${totalParts.toFixed(2)}€`, 140, currentY);
-    doc.text(`Total Horas: ${totalHours}h`, 140, currentY + 5);
 
     // Signature
     currentY += 20;
@@ -625,17 +300,6 @@ const ServiceOrderDetail: React.FC = () => {
         } catch (e) {
             doc.text('(Erro ao carregar imagem)', 20, currentY + 15);
         }
-    } else {
-        doc.text('Assinatura não recolhida.', 20, currentY);
-    }
-
-    // Footer
-    const pageCount = doc.getNumberOfPages();
-    for(let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text(`Página ${i} de ${pageCount} - Gerado por Real Frio`, 100, 290, { align: 'center' });
     }
 
     doc.save(`Relatorio_${os.code}.pdf`);
@@ -645,20 +309,15 @@ const ServiceOrderDetail: React.FC = () => {
 
   const handleUpdateStatus = async (newStatus: OSStatus) => {
     
-    // Logic for Finish Validation
     if (newStatus === OSStatus.CONCLUIDA) {
        if (!notes || notes.trim() === '') {
           alert("Por favor, preencha o relatório técnico antes de alterar para Concluída.");
           setActiveTab('finalizar');
           return;
        }
-       if (!signature && !isDemo) {
-          if(!confirm("Não recolheu a assinatura do cliente. Deseja finalizar mesmo assim?")) return;
-       }
     }
 
     setActionLoading(true);
-    const prevStatus = os.status;
     const now = new Date().toISOString();
     
     const updates: Partial<ServiceOrder> = { status: newStatus };
@@ -668,38 +327,17 @@ const ServiceOrderDetail: React.FC = () => {
       updates.resolution_notes = notes;
       updates.internal_notes = internalNotes;
       updates.client_signature = signature || undefined;
-      updates.scheduled_date = os.scheduled_date;
       
       if (activeTimerEntry) {
-         await handleStopTimer();
+         handleStopTimer();
       }
     } else {
         updates.internal_notes = internalNotes;
     }
 
-    // If leaving INICIADA state to any paused/waiting state, we might want to stop timer?
-    // Let's only stop timer if explicitly cancelled or completed, or user manually stops it.
-    // However, if moving to 'Waiting Parts', logically timer should stop.
-    if (activeTimerEntry && newStatus !== OSStatus.INICIADA && newStatus !== OSStatus.CONCLUIDA) {
-       if (confirm("Deseja parar o cronómetro ao alterar o estado?")) {
-          await handleStopTimer();
-       }
-    }
-
     setOs({ ...os, ...updates });
-
-    if (!isDemo) {
-      try {
-        const { error } = await supabase.from('service_orders').update(updates).eq('id', os.id);
-        if (error) throw error;
-      } catch (err) {
-        console.error("Error updating status:", err);
-        alert("Erro ao sincronizar estado.");
-        setOs({ ...os, status: prevStatus });
-      }
-    } else {
-      await new Promise(r => setTimeout(r, 600));
-    }
+    await mockData.updateServiceOrder(os.id, updates);
+    
     setActionLoading(false);
   };
 
@@ -712,32 +350,20 @@ const ServiceOrderDetail: React.FC = () => {
     };
 
     setOs({ ...os, ...updates });
-
-    if (!isDemo) {
-      try {
-        const { error } = await supabase.from('service_orders').update(updates).eq('id', os.id);
-        if (error) throw error;
-        alert("Alterações guardadas.");
-      } catch (err) {
-        console.error("Error saving:", err);
-        alert("Erro ao guardar alterações.");
-      }
-    } else {
-      await new Promise(r => setTimeout(r, 500));
-      alert("Alterações guardadas (Demo).");
-    }
+    await mockData.updateServiceOrder(os.id, updates);
+    alert("Alterações guardadas (Local).");
     setActionLoading(false);
   };
 
   const handleFinish = async () => {
     await handleUpdateStatus(OSStatus.CONCLUIDA);
-    alert('Ordem de Serviço Concluída com sucesso!');
+    alert('Ordem de Serviço Concluída!');
   };
 
   // --- Parts Logic ---
   const handleAddPart = async (catalogItem: PartCatalogItem, qty: number) => {
     const newPart: PartUsed = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: '', // ID will be assigned by mock helper
       part_id: catalogItem.id,
       name: catalogItem.name,
       reference: catalogItem.reference,
@@ -745,32 +371,15 @@ const ServiceOrderDetail: React.FC = () => {
       price: catalogItem.price
     };
 
-    setPartsUsed([...partsUsed, newPart]);
+    await mockData.addOSPart(os.id, newPart);
+    const updatedParts = await mockData.getOSParts(os.id);
+    setPartsUsed(updatedParts);
     setShowPartModal(false);
-
-    if (!isDemo && os) {
-      try {
-         await supabase.from('service_order_parts').insert({
-           os_id: os.id,
-           part_id: catalogItem.id,
-           name: catalogItem.name,
-           reference: catalogItem.reference,
-           quantity: qty,
-           price: catalogItem.price
-         });
-      } catch (e) { console.error("Error saving part", e); }
-    }
   };
 
   const handleRemovePart = async (id: string) => {
-    const partToRemove = partsUsed.find(p => p.id === id);
+    await mockData.removeOSPart(id);
     setPartsUsed(partsUsed.filter(p => p.id !== id));
-
-    if (!isDemo && partToRemove) {
-      try {
-        await supabase.from('service_order_parts').delete().eq('id', id);
-      } catch (e) { console.error("Error deleting part", e); }
-    }
   };
 
   // --- Photo Logic ---
@@ -791,31 +400,6 @@ const ServiceOrderDetail: React.FC = () => {
             created_at: new Date().toISOString()
           };
           setPhotos([...photos, newPhotoMock]);
-
-          if (!isDemo && os) {
-            try {
-              const fileName = `${os.id}/${Date.now()}_${file.name}`;
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('os-photos')
-                .upload(fileName, file);
-
-              let publicUrl = base64;
-              
-              if (!uploadError && uploadData) {
-                 const { data: { publicUrl: url } } = supabase.storage.from('os-photos').getPublicUrl(fileName);
-                 publicUrl = url;
-              }
-
-              await supabase.from('service_order_photos').insert({
-                os_id: os.id,
-                url: publicUrl,
-                type: 'geral'
-              });
-
-            } catch (err) {
-              console.warn("Storage upload failed, saved locally only.", err);
-            }
-          }
         }
       };
       reader.readAsDataURL(file);
@@ -839,8 +423,6 @@ const ServiceOrderDetail: React.FC = () => {
   };
 
   const isReadOnly = os.status === OSStatus.CONCLUIDA || os.status === OSStatus.CANCELADA;
-
-  // Validation Check - Modified to remove scheduled_date check
   const isFormValid = notes.trim().length > 0;
 
   return (
@@ -854,9 +436,29 @@ const ServiceOrderDetail: React.FC = () => {
               <h3 className="font-bold text-lg">Catálogo de Peças</h3>
               <button onClick={() => setShowPartModal(false)}><X size={24} className="text-gray-500" /></button>
             </div>
+            
+            {/* Search Input for Catalog */}
+            <div className="p-4 border-b bg-gray-50">
+               <input 
+                 type="text" 
+                 placeholder="Pesquisar peça..."
+                 className="w-full border p-2 rounded-lg text-sm"
+                 onChange={(e) => {
+                   // This is a quick filter for the modal only
+                   // In a real big app, we might want state for this
+                   const term = e.target.value.toLowerCase();
+                   const items = document.querySelectorAll('.catalog-item');
+                   items.forEach((item: any) => {
+                     const text = item.textContent.toLowerCase();
+                     item.style.display = text.includes(term) ? 'flex' : 'none';
+                   });
+                 }}
+               />
+            </div>
+
             <div className="overflow-y-auto p-4 space-y-3 flex-1">
-              {MOCK_CATALOG.map(item => (
-                <div key={item.id} className="border p-3 rounded-lg flex justify-between items-center hover:bg-gray-50">
+              {catalog.map(item => (
+                <div key={item.id} className="catalog-item border p-3 rounded-lg flex justify-between items-center hover:bg-gray-50">
                   <div>
                     <div className="font-medium text-gray-900">{item.name}</div>
                     <div className="text-xs text-gray-500">Ref: {item.reference} | Stock: {item.stock}</div>
@@ -864,18 +466,20 @@ const ServiceOrderDetail: React.FC = () => {
                   </div>
                   <button 
                     onClick={() => handleAddPart(item, 1)}
-                    className="bg-blue-100 text-blue-700 p-2 rounded-full hover:bg-blue-200"
+                    disabled={item.stock <= 0}
+                    className="bg-blue-100 text-blue-700 p-2 rounded-full hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Plus size={20} />
                   </button>
                 </div>
               ))}
+              {catalog.length === 0 && <p className="text-center text-gray-500">Catálogo vazio.</p>}
             </div>
           </div>
         </div>
       )}
 
-      {/* Header with Sticky Actions */}
+      {/* Header */}
       <div className="bg-white shadow-md rounded-xl p-4 mb-6 sticky top-0 z-10 border-b border-gray-200 transition-all">
         <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
           <div className="flex items-center gap-3 flex-1">
@@ -913,7 +517,6 @@ const ServiceOrderDetail: React.FC = () => {
           </div>
           
           <div className="flex gap-2 w-full md:w-auto flex-wrap justify-end">
-            
             {(os.status === OSStatus.CONCLUIDA) && (
               <button 
                 onClick={handleDownloadPDF}
@@ -923,7 +526,6 @@ const ServiceOrderDetail: React.FC = () => {
                 <Download size={18} className="mr-2 text-red-600" /> PDF
               </button>
             )}
-
           </div>
         </div>
       </div>
@@ -959,47 +561,26 @@ const ServiceOrderDetail: React.FC = () => {
              <div className="space-y-6">
                 <div className="bg-white p-6 rounded-xl shadow-sm border space-y-4">
                   <h3 className="font-semibold text-gray-900 flex items-center"><Calendar size={18} className="mr-2"/> Agendamento</h3>
-                   {/* Data e Hora Prevista */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Data Prevista</label>
-                          <div className="relative">
-                              <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                              <input
-                                  type="date"
-                                  value={os.scheduled_date ? (os.scheduled_date.includes('T') ? os.scheduled_date.split('T')[0] : os.scheduled_date) : ''}
-                                  onChange={(e) => {
-                                      const newDate = e.target.value;
-                                      const currentTime = (os.scheduled_date && os.scheduled_date.includes('T')) 
-                                          ? os.scheduled_date.split('T')[1].substring(0, 5) 
-                                          : '09:00'; // Default time
-                                      setOs({ ...os, scheduled_date: `${newDate}T${currentTime}:00` });
-                                  }}
-                                  readOnly={isReadOnly}
-                                  disabled={isReadOnly}
-                                  className="w-full pl-10 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border-gray-300 p-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
-                              />
-                          </div>
+                          <input
+                              type="date"
+                              value={os.scheduled_date ? (os.scheduled_date.includes('T') ? os.scheduled_date.split('T')[0] : os.scheduled_date) : ''}
+                              readOnly={isReadOnly}
+                              disabled={isReadOnly}
+                              className="w-full border rounded-lg shadow-sm border-gray-300 p-2 text-sm disabled:bg-gray-100"
+                          />
                       </div>
                       <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Hora Prevista</label>
-                          <div className="relative">
-                              <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                              <input
-                                  type="time"
-                                  value={(os.scheduled_date && os.scheduled_date.includes('T')) ? os.scheduled_date.split('T')[1].substring(0, 5) : ''}
-                                  onChange={(e) => {
-                                      const newTime = e.target.value;
-                                      const currentDate = os.scheduled_date 
-                                          ? (os.scheduled_date.includes('T') ? os.scheduled_date.split('T')[0] : os.scheduled_date) 
-                                          : new Date().toISOString().split('T')[0]; // Default date today
-                                      setOs({ ...os, scheduled_date: `${currentDate}T${newTime}:00` });
-                                  }}
-                                  readOnly={isReadOnly}
-                                  disabled={isReadOnly}
-                                  className="w-full pl-10 border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 border-gray-300 p-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
-                              />
-                          </div>
+                          <input
+                              type="time"
+                              value={(os.scheduled_date && os.scheduled_date.includes('T')) ? os.scheduled_date.split('T')[1].substring(0, 5) : ''}
+                              readOnly={isReadOnly}
+                              disabled={isReadOnly}
+                              className="w-full border rounded-lg shadow-sm border-gray-300 p-2 text-sm disabled:bg-gray-100"
+                          />
                       </div>
                   </div>
                 </div>
@@ -1094,11 +675,6 @@ const ServiceOrderDetail: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                <div className="flex justify-end pt-4 border-t mt-4">
-                  <div className="text-lg font-bold text-gray-900">
-                    Total: {partsUsed.reduce((acc, p) => acc + (p.price * p.quantity), 0).toFixed(2)}€
-                  </div>
-                </div>
               </div>
             )}
           </div>
@@ -1119,29 +695,15 @@ const ServiceOrderDetail: React.FC = () => {
                {photos.map((photo) => (
                  <div key={photo.id} className="aspect-square relative group bg-gray-100 rounded-lg overflow-hidden border">
                     <img src={photo.url} alt="OS Foto" className="w-full h-full object-cover" />
-                    {!isReadOnly && (
-                      <button 
-                        onClick={() => setPhotos(photos.filter(p => p.id !== photo.id))} // Optimistic delete
-                        className="absolute top-1 right-1 bg-red-600 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
                  </div>
                ))}
-               
-               {photos.length === 0 && isReadOnly && (
-                 <div className="col-span-full text-center text-gray-500 py-8">Nenhuma foto registada.</div>
-               )}
              </div>
           </div>
         )}
 
-        {/* TAB: TEMPOS (New) */}
+        {/* TAB: TEMPOS */}
         {activeTab === 'tempo' && (
           <div className="space-y-6">
-            
-            {/* Active Timer Card */}
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <h3 className="font-semibold text-gray-900 mb-4 flex items-center">
                 <Timer className="mr-2 text-blue-600" size={20} />
@@ -1220,9 +782,6 @@ const ServiceOrderDetail: React.FC = () => {
                    <History className="mr-2 text-gray-600" size={20} />
                    Registos de Tempo
                  </h3>
-                 <span className="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full">
-                   Total: {totalHours}h ({totalMinutes} min)
-                 </span>
                </div>
                
                {timeEntries.length === 0 ? (
@@ -1235,25 +794,15 @@ const ServiceOrderDetail: React.FC = () => {
                           <div className="text-sm font-medium text-gray-900">
                             {new Date(entry.start_time).toLocaleDateString()}
                           </div>
-                          <div className="text-xs text-gray-500 flex items-center gap-2">
-                             <span>{new Date(entry.start_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                             <span>➔</span>
-                             <span>{entry.end_time ? new Date(entry.end_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 'Em curso...'}</span>
+                          <div className="text-xs text-gray-500">
+                             {entry.duration_minutes ? `${entry.duration_minutes} min` : 'Em curso'}
                           </div>
                        </div>
-                       <div className="flex items-center gap-4">
-                         <span className={`font-bold ${!entry.end_time ? 'text-green-600 animate-pulse' : 'text-gray-700'}`}>
-                           {entry.end_time ? `${entry.duration_minutes} min` : 'A decorrer'}
-                         </span>
-                         {!isReadOnly && entry.end_time && (
-                           <button 
-                             onClick={() => handleDeleteTimeEntry(entry.id)}
-                             className="text-gray-400 hover:text-red-500 transition-colors"
-                           >
-                             <Trash2 size={16} />
-                           </button>
-                         )}
-                       </div>
+                       {!isReadOnly && (
+                        <button onClick={() => handleDeleteTimeEntry(entry.id)} className="text-gray-400 hover:text-red-500">
+                            <Trash2 size={16} />
+                        </button>
+                       )}
                      </div>
                    ))}
                  </div>
@@ -1281,40 +830,24 @@ const ServiceOrderDetail: React.FC = () => {
                  )}
               </div>
 
-              <label className="block text-sm font-medium text-gray-700 mb-1">Descrição do Trabalho</label>
               <textarea 
-                className={`
-                  w-full border rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 min-h-[150px] p-3 
-                  disabled:bg-gray-50 disabled:text-gray-500
-                  ${!notes.trim() && !isReadOnly ? 'border-red-300 bg-red-50' : 'border-gray-300'}
-                `}
-                placeholder="Descreva o trabalho realizado, anomalias encontradas e recomendações..."
+                className="w-full border rounded-lg shadow-sm p-3 border-gray-300"
+                placeholder="Descreva o trabalho realizado..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 readOnly={isReadOnly}
                 disabled={isReadOnly}
+                rows={6}
               />
-              {!notes.trim() && !isReadOnly && (
-                 <span className="text-xs text-red-500 mt-1 block">O relatório técnico é obrigatório.</span>
-              )}
-              {generatedSummary && !isReadOnly && (
-                <div className="mt-2 text-xs text-gray-500 italic">
-                  * Resumo gerado automaticamente. Verifique antes de guardar.
-                </div>
-              )}
             </div>
 
-            {/* Internal Notes Section - NEW */}
             <div className="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-200">
                 <h3 className="font-semibold text-yellow-900 mb-2 flex items-center">
-                    <Lock size={16} className="mr-2"/> Notas Internas (Privado)
+                    <Lock size={16} className="mr-2"/> Notas Internas
                 </h3>
-                <p className="text-xs text-yellow-700 mb-3">
-                  Informações visíveis apenas para a equipa técnica e backoffice. Não partilhado com o cliente.
-                </p>
                 <textarea 
-                  className="w-full border-yellow-300 bg-white rounded-lg shadow-sm focus:ring-yellow-500 focus:border-yellow-500 min-h-[100px] p-3 border disabled:bg-gray-50 disabled:text-gray-500"
-                  placeholder="Códigos de acesso, dificuldades técnicas, notas sobre o cliente..."
+                  className="w-full border-yellow-300 bg-white rounded-lg p-3 border"
+                  placeholder="Notas privadas..."
                   value={internalNotes}
                   onChange={(e) => setInternalNotes(e.target.value)}
                   readOnly={isReadOnly}
@@ -1351,10 +884,6 @@ const ServiceOrderDetail: React.FC = () => {
                   )}
                 </div>
               )}
-              <div className="mt-4 flex items-center gap-2 text-sm text-gray-600">
-                <input type="checkbox" id="confirm" className="rounded text-blue-600" disabled={isReadOnly} defaultChecked={isReadOnly} />
-                <label htmlFor="confirm">Confirmo que o serviço foi realizado satisfatoriamente.</label>
-              </div>
             </div>
 
             {!isReadOnly && (
@@ -1365,16 +894,9 @@ const ServiceOrderDetail: React.FC = () => {
                   w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center text-lg transition-all
                   ${!isFormValid ? 'opacity-50 cursor-not-allowed bg-gray-400' : 'hover:bg-blue-700'}
                 `}
-                title={!isFormValid ? "Preencha o relatório para finalizar" : "Finalizar OS"}
               >
                 {actionLoading ? 'A finalizar...' : <><Save size={24} className="mr-2" /> Finalizar Ordem de Serviço</>}
               </button>
-            )}
-            
-            {os.status === OSStatus.CONCLUIDA && (
-              <div className="text-center p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 font-medium">
-                Esta Ordem de Serviço foi concluída.
-              </div>
             )}
           </div>
         )}

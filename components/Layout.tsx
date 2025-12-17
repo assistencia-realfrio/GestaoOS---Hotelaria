@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, ClipboardList, Users, HardDrive, LayoutDashboard, LogOut, User, WifiOff, Plus, ArrowUp, UserCog } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { Menu, X, ClipboardList, Users, HardDrive, LayoutDashboard, LogOut, User, WifiOff, Plus, ArrowUp, UserCog, Package } from 'lucide-react';
+import { mockData } from '../services/mockData';
 import { UserRole } from '../types';
 import BrandLogo from './BrandLogo';
 
@@ -12,52 +12,37 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    
     // Scroll detection for FAB
     const handleScroll = () => {
       const mainElement = document.querySelector('main');
       if (mainElement && mainElement.scrollTop > 300) {
         setShowScrollTop(true);
       } else if (window.scrollY > 300) {
-        // Fallback for window scroll
         setShowScrollTop(true);
       } else {
         setShowScrollTop(false);
       }
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    // Attach scroll listener to window and main container just in case
     window.addEventListener('scroll', handleScroll);
     const mainEl = document.querySelector('main');
     if (mainEl) mainEl.addEventListener('scroll', handleScroll);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
       window.removeEventListener('scroll', handleScroll);
       if (mainEl) mainEl.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
   const handleLogout = async () => {
-    if (localStorage.getItem('demo_session')) {
-      localStorage.removeItem('demo_session');
-      navigate('/login');
-      window.location.reload();
-      return;
-    }
-    await supabase.auth.signOut();
+    await mockData.signOut();
     navigate('/login');
+    window.location.reload();
   };
 
   const scrollToTop = () => {
@@ -73,6 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
     { name: 'Ordens de Serviço', path: '/os', icon: ClipboardList },
     { name: 'Clientes', path: '/clients', icon: Users },
     { name: 'Equipamentos', path: '/equipments', icon: HardDrive },
+    { name: 'Stock & Catálogo', path: '/inventory', icon: Package },
     { name: 'Utilizadores', path: '/users', icon: UserCog },
   ];
 
@@ -96,19 +82,10 @@ const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
   };
 
   const fabConfig = getFabConfig();
-  // Hide FAB on creation pages (any path ending in /new)
   const showFab = fabConfig.visible && !location.pathname.endsWith('/new');
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
-      {/* Offline Banner */}
-      {!isOnline && (
-        <div className="fixed top-0 left-0 w-full bg-red-600 text-white text-xs font-bold text-center py-1 z-50 flex items-center justify-center">
-          <WifiOff size={12} className="mr-2" />
-          Modo Offline: As alterações serão sincronizadas quando recuperar a ligação.
-        </div>
-      )}
-
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div 
@@ -192,7 +169,7 @@ const Layout: React.FC<LayoutProps> = ({ children, userRole }) => {
           </div>
         </header>
 
-        <main className={`flex-1 overflow-y-auto p-4 md:p-8 ${!isOnline ? 'pt-8' : ''} scroll-smooth`}>
+        <main className={`flex-1 overflow-y-auto p-4 md:p-8 pt-8 scroll-smooth`}>
           {children}
         </main>
 

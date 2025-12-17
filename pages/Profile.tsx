@@ -1,50 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { User, Mail, Shield, LogOut, Briefcase, Clock, CheckCircle } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { mockData } from '../services/mockData';
 import { useNavigate } from 'react-router-dom';
-import { UserRole } from '../types';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const isDemo = localStorage.getItem('demo_session') === 'true';
 
   useEffect(() => {
-    fetchProfile();
+    const u = mockData.getSession();
+    setUser(u);
   }, []);
 
-  const fetchProfile = async () => {
-    if (isDemo) {
-      setUser({
-        email: 'demo@tecnico.pt',
-        role: UserRole.TECNICO,
-        last_sign_in: new Date().toISOString(),
-        id: 'demo-user-123'
-      });
-      setLoading(false);
-      return;
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
-    setLoading(false);
-  };
-
   const handleLogout = async () => {
-    localStorage.removeItem('demo_session');
-    await supabase.auth.signOut();
+    await mockData.signOut();
     navigate('/login');
     window.location.reload();
   };
-
-  if (loading) return <div className="p-8 text-center">A carregar perfil...</div>;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">O Meu Perfil</h1>
 
-      {/* User Card */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-slate-900 h-24"></div>
         <div className="px-6 pb-6 relative">
@@ -57,31 +34,19 @@ const Profile: React.FC = () => {
           </div>
           
           <div className="mt-14 space-y-1">
-            <h2 className="text-xl font-bold text-gray-900">{isDemo ? 'Técnico Demo' : user?.email?.split('@')[0]}</h2>
+            <h2 className="text-xl font-bold text-gray-900">Técnico Admin</h2>
             <div className="flex items-center text-sm text-gray-500">
                <Mail size={14} className="mr-1" />
                {user?.email}
             </div>
             <div className="flex items-center text-sm text-blue-600 font-medium">
                <Shield size={14} className="mr-1" />
-               {isDemo ? 'Técnico' : user?.role || 'Técnico'}
+               {user?.role}
             </div>
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-2 gap-4">
-             <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <span className="block text-2xl font-bold text-gray-900">12</span>
-                <span className="text-xs text-gray-500 uppercase tracking-wide">OS Realizadas</span>
-             </div>
-             <div className="text-center p-3 bg-gray-50 rounded-lg">
-                <span className="block text-2xl font-bold text-gray-900">4.5</span>
-                <span className="text-xs text-gray-500 uppercase tracking-wide">Média Horas/OS</span>
-             </div>
           </div>
         </div>
       </div>
 
-      {/* Settings / Info */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
         <h3 className="font-semibold text-gray-900">Informações da Conta</h3>
         
@@ -92,23 +57,13 @@ const Profile: React.FC = () => {
           </div>
           <span className="font-medium">Real Frio</span>
         </div>
-
-        <div className="flex items-center justify-between py-3 border-b border-gray-100">
-          <div className="flex items-center text-gray-700">
-            <Clock size={18} className="mr-3 text-gray-400" />
-            <span>Último Acesso</span>
-          </div>
-          <span className="text-sm text-gray-500">
-             {user?.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Agora'}
-          </span>
-        </div>
         
         <div className="flex items-center justify-between py-3">
            <div className="flex items-center text-gray-700">
              <CheckCircle size={18} className="mr-3 text-gray-400" />
              <span>Versão da App</span>
            </div>
-           <span className="text-sm text-gray-500">v1.0.3</span>
+           <span className="text-sm text-gray-500">v1.1.0 (Local-First)</span>
         </div>
       </div>
 

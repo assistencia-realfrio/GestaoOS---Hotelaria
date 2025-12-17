@@ -1,50 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, MapPin, Phone, Building2 } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { mockData } from '../services/mockData';
 import { Client } from '../types';
-
-// Mock data for demo mode
-const MOCK_CLIENTS: Client[] = [
-  { id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@hotel.pt', contact_person: 'Sr. Silva' },
-  { id: '2', name: 'Restaurante O Pescador', type: 'Restaurante', address: 'Rua do Porto 5, Setúbal', phone: '966554433', email: 'pescador@rest.pt', contact_person: 'D. Maria' },
-  { id: '3', name: 'Pastelaria Central', type: 'Pastelaria', address: 'Praça da República, Coimbra', phone: '239123123', email: 'geral@central.pt', contact_person: 'João Santos' },
-  { id: '4', name: 'Lavandaria Expresso', type: 'Lavandaria', address: 'Rua das Flores, Porto', phone: '223344556', email: 'info@expresso.pt', contact_person: 'Ana Costa' },
-];
 
 const Clients: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const isDemo = localStorage.getItem('demo_session') === 'true';
 
   useEffect(() => {
-    fetchClients();
+    const load = async () => {
+      const data = await mockData.getClients();
+      setClients(data);
+      setLoading(false);
+    };
+    load();
   }, []);
-
-  const fetchClients = async () => {
-    if (isDemo) {
-      setClients(MOCK_CLIENTS);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('clients')
-        .select('*')
-        .order('name');
-      
-      if (error) throw error;
-      setClients(data || []);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-      // Fallback to mock if API fails in what looks like a demo environment
-      setClients(MOCK_CLIENTS); 
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredClients = clients.filter(client => 
     client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

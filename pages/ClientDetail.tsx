@@ -1,24 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { MapPin, Phone, Mail, User, HardDrive, ClipboardList, PenTool, History } from 'lucide-react';
-import { supabase } from '../supabaseClient';
-import { Client, Equipment, ServiceOrder, OSStatus, OSType } from '../types';
+import { MapPin, Phone, Mail, User, HardDrive, History } from 'lucide-react';
+import { mockData } from '../services/mockData';
+import { Client, Equipment, ServiceOrder } from '../types';
 import OSStatusBadge from '../components/OSStatusBadge';
-
-// Mock Data
-const MOCK_CLIENT: Client = { 
-  id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: 'Av. Marginal 123, Lisboa', phone: '912345678', email: 'admin@baiaazul.pt', contact_person: 'Sr. Silva', notes: 'Cliente preferencial. Acesso pelas traseiras.' 
-};
-
-const MOCK_EQUIPMENTS: Equipment[] = [
-  { id: 'eq-1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45CNE', serial_number: 'L00543', status: 'ativo' },
-  { id: 'eq-2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi Pro', serial_number: 'E112233', status: 'em_reparacao' },
-];
-
-const MOCK_HISTORY: ServiceOrder[] = [
-  { id: '1', code: 'OS-2023-001', client_id: '1', type: OSType.AVARIA, status: OSStatus.CONCLUIDA, description: 'Máquina de gelo parada', priority: 'alta', created_at: '2023-09-15' },
-  { id: '2', code: 'OS-2023-002', client_id: '1', type: OSType.MANUTENCAO, status: OSStatus.AGUARDA_PECAS, description: 'Revisão semestral', priority: 'media', created_at: '2023-10-20' },
-];
 
 const ClientDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -27,47 +12,29 @@ const ClientDetail: React.FC = () => {
   const [history, setHistory] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'equipments' | 'history'>('equipments');
-  const isDemo = localStorage.getItem('demo_session') === 'true';
 
   useEffect(() => {
     const fetchData = async () => {
-      if (isDemo) {
-        setClient(MOCK_CLIENT);
-        setEquipments(MOCK_EQUIPMENTS);
-        setHistory(MOCK_HISTORY);
-        setLoading(false);
-        return;
+      if (!id) return;
+      const c = await mockData.getClientById(id);
+      const allEq = await mockData.getEquipments();
+      const allOs = await mockData.getServiceOrders();
+
+      if (c) {
+          setClient(c);
+          setEquipments(allEq.filter(e => e.client_id === id));
+          setHistory(allOs.filter(o => o.client_id === id));
       }
-
-      try {
-        // Fetch Client
-        const { data: clientData } = await supabase.from('clients').select('*').eq('id', id).single();
-        if (clientData) setClient(clientData);
-
-        // Fetch Equipment
-        const { data: equipData } = await supabase.from('equipments').select('*').eq('client_id', id);
-        if (equipData) setEquipments(equipData);
-
-        // Fetch History
-        const { data: historyData } = await supabase.from('service_orders').select('*').eq('client_id', id).order('created_at', { ascending: false });
-        if (historyData) setHistory(historyData);
-
-      } catch (error) {
-        console.error("Error loading client data", error);
-        setClient(MOCK_CLIENT); // Fallback for stability
-      } finally {
-        setLoading(false);
-      }
+      setLoading(false);
     };
     fetchData();
-  }, [id, isDemo]);
+  }, [id]);
 
   if (loading) return <div className="p-8 text-center">A carregar...</div>;
   if (!client) return <div className="p-8 text-center">Cliente não encontrado.</div>;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Client Header Card */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-slate-900 px-6 py-4">
           <div className="flex justify-between items-center">
@@ -103,7 +70,6 @@ const ClientDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[400px]">
         <div className="flex border-b border-gray-200">
           <button
@@ -129,11 +95,6 @@ const ClientDetail: React.FC = () => {
         <div className="p-6">
           {activeTab === 'equipments' && (
             <div className="space-y-4">
-              <div className="flex justify-end">
-                <button className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg font-medium transition-colors">
-                  + Adicionar Equipamento
-                </button>
-              </div>
               {equipments.length === 0 ? (
                 <p className="text-center text-gray-400 py-8">Nenhum equipamento registado.</p>
               ) : (

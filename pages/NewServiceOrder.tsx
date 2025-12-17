@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Save, ArrowLeft, Calendar, AlertTriangle, FileText } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { mockData } from '../services/mockData';
 import { Client, Equipment, OSType, OSStatus } from '../types';
 
 const NewServiceOrder: React.FC = () => {
@@ -20,14 +20,10 @@ const NewServiceOrder: React.FC = () => {
     scheduled_date: new Date().toISOString().split('T')[0] // Today YYYY-MM-DD
   });
 
-  // Mock data for demo
-  const isDemo = localStorage.getItem('demo_session') === 'true';
-
   useEffect(() => {
     fetchClients();
   }, []);
 
-  // When client changes, fetch their equipment
   useEffect(() => {
     if (formData.client_id) {
       fetchEquipments(formData.client_id);
@@ -37,29 +33,13 @@ const NewServiceOrder: React.FC = () => {
   }, [formData.client_id]);
 
   const fetchClients = async () => {
-    if (isDemo) {
-      setClients([
-        { id: '1', name: 'Hotel Baía Azul', type: 'Hotel', address: '', phone: '', email: '', contact_person: '' },
-        { id: '2', name: 'Restaurante O Pescador', type: 'Restaurante', address: '', phone: '', email: '', contact_person: '' },
-      ]);
-      return;
-    }
-    const { data } = await supabase.from('clients').select('id, name');
-    if (data) setClients(data as any);
+    const data = await mockData.getClients();
+    setClients(data);
   };
 
   const fetchEquipments = async (clientId: string) => {
-    if (isDemo) {
-      const mockEq = [
-        { id: '1', client_id: '1', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45', serial_number: '123', status: 'ativo' },
-        { id: '2', client_id: '1', type: 'Forno', brand: 'Rational', model: 'iCombi', serial_number: '456', status: 'ativo' },
-        { id: '3', client_id: '2', type: 'Grelhador', brand: 'GrelhaMox', model: 'G500', serial_number: '789', status: 'ativo' },
-      ];
-      setEquipments(mockEq.filter(e => e.client_id === clientId) as any);
-      return;
-    }
-    const { data } = await supabase.from('equipments').select('*').eq('client_id', clientId);
-    if (data) setEquipments(data);
+    const all = await mockData.getEquipments();
+    setEquipments(all.filter(e => e.client_id === clientId));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,29 +51,15 @@ const NewServiceOrder: React.FC = () => {
         throw new Error("Preencha os campos obrigatórios.");
       }
 
-      if (isDemo) {
-        console.log("OS Criada (Demo):", formData);
-        await new Promise(r => setTimeout(r, 1000)); // Fake network delay
-        alert("Ordem de Serviço criada com sucesso! (Modo Demo)");
-        navigate('/os');
-        return;
-      }
-
-      // Generate a Code (In real DB this would be a trigger or function)
-      const code = `OS-${new Date().getFullYear()}-${Math.floor(Math.random() * 10000)}`;
-
-      const { error } = await supabase.from('service_orders').insert({
-        code,
+      await mockData.createServiceOrder({
         client_id: formData.client_id,
-        equipment_id: formData.equipment_id || null,
+        equipment_id: formData.equipment_id || undefined,
         type: formData.type,
-        priority: formData.priority,
+        priority: formData.priority as any,
         description: formData.description,
-        status: OSStatus.POR_INICIAR, // FIXED: Use enum instead of string 'aberta'
+        status: OSStatus.POR_INICIAR,
         scheduled_date: formData.scheduled_date
       });
-
-      if (error) throw error;
 
       navigate('/os');
     } catch (err: any) {

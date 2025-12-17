@@ -1,61 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Search, Calendar, User, AlertCircle, Clock, CheckCircle2, HardDrive, Filter, LayoutGrid, List, ChevronDown } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { mockData } from '../services/mockData';
 import { ServiceOrder, OSStatus, OSType } from '../types';
 import OSStatusBadge from '../components/OSStatusBadge';
-
-// Mock data expandido para o modo Demo
-const MOCK_OS_LIST: any[] = [
-  { 
-    id: '1', 
-    code: 'OS-2023-001', 
-    client: { name: 'Hotel Baía Azul' }, 
-    equipment: { type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45CNE' },
-    type: OSType.AVARIA, 
-    status: OSStatus.INICIADA, 
-    description: 'Máquina de gelo parou de fabricar gelo. Compressor muito quente.', 
-    priority: 'alta', 
-    created_at: '2023-10-10T09:00:00Z',
-    scheduled_date: '2023-10-10'
-  },
-  { 
-    id: '2', 
-    code: 'OS-2023-002', 
-    client: { name: 'Restaurante O Pescador' }, 
-    equipment: { type: 'Exaustão', brand: 'Industrial', model: 'X500' },
-    type: OSType.MANUTENCAO, 
-    status: OSStatus.AGUARDA_PECAS, 
-    description: 'Limpeza preventiva da exaustão e verificação de filtros.', 
-    priority: 'media', 
-    created_at: '2023-10-11T14:30:00Z',
-    scheduled_date: '2023-10-12'
-  },
-  { 
-    id: '3', 
-    code: 'OS-2023-003', 
-    client: { name: 'Pastelaria Central' }, 
-    equipment: { type: 'Forno', brand: 'Rational', model: 'iCombi' },
-    type: OSType.INSTALACAO, 
-    status: OSStatus.CONCLUIDA, 
-    description: 'Instalação de novo Forno Convector Rational.', 
-    priority: 'media', 
-    created_at: '2023-10-09T10:00:00Z',
-    scheduled_date: '2023-10-09'
-  },
-  { 
-    id: '4', 
-    code: 'OS-2023-004', 
-    client: { name: 'Hotel Baía Azul' }, 
-    equipment: { type: 'Câmara Frigorífica', brand: 'FrioInd', model: 'CF-20' },
-    type: OSType.REVISAO, 
-    status: OSStatus.POR_INICIAR, 
-    description: 'Revisão geral das câmaras frigoríficas antes da época alta.', 
-    priority: 'baixa', 
-    created_at: '2023-10-12T08:00:00Z',
-    scheduled_date: '2023-10-15'
-  },
-];
 
 // Helpers Visuais
 const getStatusLabelText = (status: string) => {
@@ -85,7 +33,6 @@ const getStatusBorderColor = (status: OSStatus) => {
   }
 };
 
-// Helper for the Select background
 const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case OSStatus.POR_INICIAR: return 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200';
@@ -157,43 +104,24 @@ const ServiceOrders: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<OSStatus | 'all'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list');
   
-  const isDemo = localStorage.getItem('demo_session') === 'true';
-
   useEffect(() => {
     fetchOrders();
   }, []);
 
   const fetchOrders = async () => {
     setLoading(true);
-    if (isDemo) {
-      await new Promise(r => setTimeout(r, 600));
-      setOrders(MOCK_OS_LIST);
-      setLoading(false);
-      return;
-    }
-
     try {
-      const { data, error } = await supabase
-        .from('service_orders')
-        .select(`
-          *,
-          client:clients (name),
-          equipment:equipments (type, brand, model)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+      const data = await mockData.getServiceOrders();
       setOrders(data || []);
     } catch (error) {
       console.error('Erro ao carregar OS:', error);
-      setOrders(MOCK_OS_LIST); 
     } finally {
       setLoading(false);
     }
   };
 
   const handleQuickStatusUpdate = async (e: React.ChangeEvent<HTMLSelectElement>, osId: string) => {
-    e.preventDefault(); // Impede a navegação do Link
+    e.preventDefault();
     const newStatus = e.target.value as OSStatus;
 
     // Atualização Otimista
@@ -201,22 +129,8 @@ const ServiceOrders: React.FC = () => {
       prevOrders.map(o => o.id === osId ? { ...o, status: newStatus } : o)
     );
 
-    if (!isDemo) {
-      try {
-        const { error } = await supabase
-          .from('service_orders')
-          .update({ status: newStatus })
-          .eq('id', osId);
-        
-        if (error) {
-           console.error('Error updating status', error);
-           // Reverter em caso de erro (simplificado, normalmente faríamos refetch)
-           fetchOrders();
-        }
-      } catch (err) {
-        console.error('Error updating status', err);
-      }
-    }
+    // Update in Mock DB
+    await mockData.updateServiceOrder(osId, { status: newStatus });
   };
 
   // Lógica de Filtros (Texto + Estado)
@@ -226,7 +140,7 @@ const ServiceOrders: React.FC = () => {
     
     const matchesSearch = 
       os.code.toLowerCase().includes(searchLower) ||
-      os.client?.name.toLowerCase().includes(searchLower) ||
+      (os.client?.name || '').toLowerCase().includes(searchLower) ||
       os.description.toLowerCase().includes(searchLower) ||
       equipmentStr.includes(searchLower);
 

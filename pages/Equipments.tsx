@@ -1,55 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { Search, HardDrive, Filter, AlertCircle } from 'lucide-react';
-import { supabase } from '../supabaseClient';
+import { mockData } from '../services/mockData';
 import { Equipment } from '../types';
-
-const MOCK_ALL_EQUIPMENTS: (Equipment & { client_name?: string })[] = [
-  { id: '1', client_id: '1', client_name: 'Hotel Baía Azul', type: 'Máquina de Gelo', brand: 'Hoshizaki', model: 'IM-45CNE', serial_number: 'L00543', status: 'ativo' },
-  { id: '2', client_id: '1', client_name: 'Hotel Baía Azul', type: 'Forno', brand: 'Rational', model: 'iCombi Pro', serial_number: 'E112233', status: 'em_reparacao' },
-  { id: '3', client_id: '2', client_name: 'Restaurante O Pescador', type: 'Grelhador', brand: 'GrelhaMox', model: 'G-500', serial_number: 'G55001', status: 'ativo' },
-  { id: '4', client_id: '3', client_name: 'Pastelaria Central', type: 'Vitrina Fria', brand: 'Jarp', model: 'V-200', serial_number: 'V20099', status: 'inativo' },
-];
 
 const Equipments: React.FC = () => {
   const [equipments, setEquipments] = useState<(Equipment & { client_name?: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const isDemo = localStorage.getItem('demo_session') === 'true';
 
   useEffect(() => {
-    fetchEquipments();
-  }, []);
-
-  const fetchEquipments = async () => {
-    if (isDemo) {
-      setEquipments(MOCK_ALL_EQUIPMENTS);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('equipments')
-        .select(`
-          *,
-          clients (name)
-        `);
+    const load = async () => {
+      const eqs = await mockData.getEquipments();
+      const clients = await mockData.getClients();
       
-      if (error) throw error;
-      
-      const formatted = data.map((item: any) => ({
-        ...item,
-        client_name: item.clients?.name
+      const enriched = eqs.map(e => ({
+        ...e,
+        client_name: clients.find(c => c.id === e.client_id)?.name
       }));
-
-      setEquipments(formatted);
-    } catch (error) {
-      console.error('Error fetching equipments:', error);
-      setEquipments(MOCK_ALL_EQUIPMENTS);
-    } finally {
+      setEquipments(enriched);
       setLoading(false);
-    }
-  };
+    };
+    load();
+  }, []);
 
   const filtered = equipments.filter(eq => 
     eq.type.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -62,10 +34,6 @@ const Equipments: React.FC = () => {
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Parque de Equipamentos</h1>
-        <button className="flex items-center space-x-2 text-gray-600 bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 shadow-sm">
-          <Filter size={18} />
-          <span>Filtros</span>
-        </button>
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6">
@@ -94,7 +62,6 @@ const Equipments: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Marca/Modelo</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -126,9 +93,6 @@ const Equipments: React.FC = () => {
                          <span className="flex items-center gap-1"><AlertCircle size={12}/> Em Reparação</span>
                       ) : eq.status}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <a href={`#/clients/${eq.client_id}`} className="text-blue-600 hover:text-blue-900">Ver Cliente</a>
                   </td>
                 </tr>
               ))}
